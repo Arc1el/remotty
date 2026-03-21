@@ -16,7 +16,7 @@ echo ""
 errors=0
 
 # 1. tmux
-echo "[1/3] tmux"
+echo "[1/2] tmux"
 if command -v tmux &>/dev/null; then
   ok "tmux $(tmux -V | awk '{print $2}') installed"
 else
@@ -25,41 +25,36 @@ else
   errors=$((errors + 1))
 fi
 
-# 2. Tailscale
-echo "[2/3] Tailscale"
+# 2. Tailscale + SSH
+echo "[2/2] Tailscale SSH"
 if command -v tailscale &>/dev/null; then
-  ok "tailscale installed"
-  ts_status=$(tailscale status --json 2>/dev/null | grep -o '"BackendState":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+  ok "tailscale installed (brew)"
+  ts_json=$(tailscale status --json 2>/dev/null || echo "{}")
+  ts_status=$(echo "$ts_json" | grep -o '"BackendState"[^,]*' | grep -o '[^"]*"$' | tr -d '"' || echo "unknown")
   if [ "$ts_status" = "Running" ]; then
     ts_ip=$(tailscale ip -4 2>/dev/null || echo "unknown")
     ok "Tailscale running — IP: $ts_ip"
+    # Check Tailscale SSH (RunSSH is in debug prefs, not status)
+    ts_ssh=$(tailscale debug prefs 2>/dev/null | grep '"RunSSH"' | grep 'true' || true)
+    if [ -n "$ts_ssh" ]; then
+      ok "Tailscale SSH enabled"
+    else
+      fail "Tailscale SSH not enabled"
+      echo "      tailscale set --ssh"
+      errors=$((errors + 1))
+    fi
   else
-    warn "Tailscale not running (state: $ts_status)"
-    echo "      Open Tailscale app and connect"
-  fi
-elif [ -d "/Applications/Tailscale.app" ]; then
-  warn "Tailscale app exists but CLI not in PATH"
-  echo "      Open Tailscale app, or add to PATH"
-else
-  fail "Tailscale not found"
-  echo "      brew install --cask tailscale"
-  errors=$((errors + 1))
-fi
-
-# 3. SSH (Remote Login)
-echo "[3/3] SSH (Remote Login)"
-if nc -z localhost 22 &>/dev/null; then
-  ok "SSH listening on port 22"
-else
-  ssh_status=$(sudo systemsetup -getremotelogin 2>/dev/null | grep -i "on" || true)
-  if [ -n "$ssh_status" ]; then
-    warn "Remote Login enabled but port 22 not responding"
-  else
-    fail "Remote Login disabled"
-    echo "      System Settings > General > Sharing > Remote Login"
-    echo "      or: sudo systemsetup -setremotelogin on"
+    fail "Tailscale not running (state: $ts_status)"
+    echo "      brew services start tailscale && tailscale login"
     errors=$((errors + 1))
   fi
+else
+  fail "Tailscale not found"
+  echo "      brew install tailscale"
+  echo "      brew services start tailscale"
+  echo "      tailscale login"
+  echo "      tailscale set --ssh"
+  errors=$((errors + 1))
 fi
 
 echo ""

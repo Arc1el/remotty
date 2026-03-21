@@ -3,20 +3,18 @@
 # Used by Lua status bar and manual checks
 
 tailscale_up=false
-ssh_up=false
+tailscale_ssh=false
 tmux_session=""
 
-# Tailscale
+# Tailscale + SSH
 if command -v tailscale &>/dev/null; then
-  ts_state=$(tailscale status --json 2>/dev/null | grep -o '"BackendState":"[^"]*"' | cut -d'"' -f4 || echo "")
-  if [ "$ts_state" = "Running" ]; then
+  ts_json=$(tailscale status --json 2>/dev/null || echo "")
+  if echo "$ts_json" | grep -q '"BackendState".*"Running"'; then
     tailscale_up=true
+    if tailscale debug prefs 2>/dev/null | grep -q '"RunSSH".*true'; then
+      tailscale_ssh=true
+    fi
   fi
-fi
-
-# SSH
-if nc -z localhost 22 &>/dev/null; then
-  ssh_up=true
 fi
 
 # tmux session
@@ -25,4 +23,4 @@ if tmux has-session -t main 2>/dev/null; then
 fi
 
 # Output for Lua parsing (single line)
-echo "tailscale=$tailscale_up ssh=$ssh_up tmux=$tmux_session"
+echo "tailscale=$tailscale_up ssh=$tailscale_ssh tmux=$tmux_session"
