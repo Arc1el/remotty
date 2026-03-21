@@ -1,9 +1,30 @@
+PROJECT_DIR := $(CURDIR)
 KAKU_CONFIG := $(HOME)/.config/kaku/kaku.lua
 TMUX_CONFIG := $(HOME)/.tmux.conf
 REMOTE_LUA := $(CURDIR)/config/kaku-remote.lua
 REMOTE_TMUX := $(CURDIR)/config/tmux-remote.conf
+PID_FILE := /tmp/kaku-remote.pid
 
-.PHONY: install uninstall status setup
+.PHONY: serve stop status setup install uninstall
+
+serve:
+	@if [ -f "$(PID_FILE)" ] && kill -0 $$(cat "$(PID_FILE)") 2>/dev/null; then \
+		echo "Already running (PID $$(cat $(PID_FILE)))"; \
+	else \
+		python3 "$(PROJECT_DIR)/server.py" & \
+		echo $$! > "$(PID_FILE)"; \
+		echo "Started (PID $$!)"; \
+	fi
+
+stop:
+	@if [ -f "$(PID_FILE)" ]; then \
+		kill $$(cat "$(PID_FILE)") 2>/dev/null || true; \
+		rm -f "$(PID_FILE)"; \
+		echo "Stopped."; \
+	else \
+		echo "Not running."; \
+	fi
+	@pkill -f "ttyd.*tmux attach" 2>/dev/null || true
 
 install:
 	@echo "=== Installing kaku-remote ==="
@@ -14,10 +35,9 @@ install:
 	else \
 		echo "  tmux-remote.conf already in ~/.tmux.conf"; \
 	fi
-	@# Add loader to kaku.lua (before 'return config')
+	@# Add loader to kaku.lua
 	@if ! grep -q 'kaku-remote' "$(KAKU_CONFIG)" 2>/dev/null; then \
 		python3 -c "\
-import sys; \
 f = open('$(KAKU_CONFIG)', 'r'); lines = f.read(); f.close(); \
 loader = \"\n-- kaku-remote\nlocal _ok, _remote = pcall(dofile, '$(REMOTE_LUA)')\nif _ok and _remote and _remote.apply then _remote.apply(config) end\n\"; \
 lines = lines.replace('return config', loader + 'return config'); \
@@ -30,12 +50,11 @@ f = open('$(KAKU_CONFIG)', 'w'); f.write(lines); f.close()"; \
 
 uninstall:
 	@echo "=== Uninstalling kaku-remote ==="
-	@# Remove from ~/.tmux.conf
+	@$(MAKE) stop
 	@if grep -q 'kaku-remote' "$(TMUX_CONFIG)" 2>/dev/null; then \
 		sed -i '' '/kaku-remote/d' "$(TMUX_CONFIG)"; \
 		echo "  Removed from ~/.tmux.conf"; \
 	fi
-	@# Remove from kaku.lua
 	@if grep -q 'kaku-remote' "$(KAKU_CONFIG)" 2>/dev/null; then \
 		sed -i '' '/kaku-remote/d' "$(KAKU_CONFIG)"; \
 		echo "  Removed from kaku.lua"; \

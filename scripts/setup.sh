@@ -16,7 +16,7 @@ echo ""
 errors=0
 
 # 1. tmux
-echo "[1/2] tmux"
+echo "[1/3] tmux"
 if command -v tmux &>/dev/null; then
   ok "tmux $(tmux -V | awk '{print $2}') installed"
 else
@@ -26,7 +26,17 @@ else
 fi
 
 # 2. Tailscale + SSH
-echo "[2/2] Tailscale SSH"
+echo "[2/3] ttyd"
+if command -v ttyd &>/dev/null; then
+  ok "ttyd installed"
+else
+  fail "ttyd not found"
+  echo "      brew install ttyd"
+  errors=$((errors + 1))
+fi
+
+# 3. Tailscale + SSH
+echo "[3/3] Tailscale SSH"
 if command -v tailscale &>/dev/null; then
   ok "tailscale installed (brew)"
   ts_json=$(tailscale status --json 2>/dev/null || echo "{}")
