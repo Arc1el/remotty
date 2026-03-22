@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""kaku-remote: web dashboard for Kaku terminal tabs.
-Lists open Kaku tabs and provides web terminal access via ttyd.
+"""kaku-remote: web dashboard for Kaku terminal sessions.
+Lists tmux windows and provides shared web terminal access via ttyd.
 Zero dependencies — stdlib only.
 """
 
@@ -13,71 +13,61 @@ import sys
 import threading
 import time
 from pathlib import Path
-from urllib.parse import urlparse, unquote, urlsplit
+from urllib.parse import urlparse
 
 PORT = 7777
 TTYD_BASE_PORT = 7781
 TTYD_BIN = "/opt/homebrew/bin/ttyd"
-KAKU_CLI = "/Applications/Kaku.app/Contents/MacOS/kaku"
+TMUX_BIN = "/opt/homebrew/bin/tmux"
+TMUX_SESSION = "main"
 WEB_DIR = Path(__file__).parent / "web"
 
-# Track ttyd processes: {pane_id: {"proc": Popen, "port": int, "last_access": float}}
+# Track ttyd processes: {window_index: {"proc": Popen, "port": int, "last_access": float}}
 ttyd_procs = {}
 ttyd_lock = threading.Lock()
 
 
 def get_sessions():
-    """Get open Kaku tabs via CLI."""
+    """Get tmux window list."""
     try:
+        fmt = "#{window_index}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{window_active}"
         result = subprocess.run(
-            [KAKU_CLI, "cli", "list", "--format", "json"],
+            [TMUX_BIN, "list-windows", "-t", TMUX_SESSION, "-F", fmt],
             capture_output=True, text=True, timeout=5,
         )
         if result.returncode != 0:
             return []
 
-        panes = json.loads(result.stdout)
         home = os.path.expanduser("~")
         sessions = []
+        for line in result.stdout.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split("\t")
+            if len(parts) < 5:
+                continue
+            idx, name, path, cmd, active = parts[0], parts[1], parts[2], parts[3], parts[4]
 
-        for pane in panes:
-            # Parse cwd from file://hostname/path URL
-            cwd_raw = pane.get("cwd", "")
-            if cwd_raw.startswith("file://"):
-                parsed_cwd = urlsplit(cwd_raw)
-                cwd = unquote(parsed_cwd.path)
-            else:
-                cwd = cwd_raw
-            cwd = cwd.rstrip("/")
+            display_path = path.replace(home, "~") if path.startswith(home) else path
 
-            # Shorten path
-            display_path = cwd.replace(home, "~") if cwd.startswith(home) else cwd
-
-            # Get git branch
             branch = ""
-            if cwd:
-                try:
-                    git_result = subprocess.run(
-                        ["git", "-C", cwd, "branch", "--show-current"],
-                        capture_output=True, text=True, timeout=3,
-                    )
-                    if git_result.returncode == 0:
-                        branch = git_result.stdout.strip()
-                except Exception:
-                    pass
-
-            title = pane.get("tab_title") or pane.get("title") or "shell"
+            try:
+                git_result = subprocess.run(
+                    ["git", "-C", path, "branch", "--show-current"],
+                    capture_output=True, text=True, timeout=3,
+                )
+                if git_result.returncode == 0:
+                    branch = git_result.stdout.strip()
+            except Exception:
+                pass
 
             sessions.append({
-                "pane_id": pane["pane_id"],
-                "tab_id": pane["tab_id"],
-                "window_id": pane["window_id"],
-                "title": title,
+                "index": int(idx),
+                "name": name,
                 "path": display_path,
-                "command": pane.get("title", ""),
+                "command": cmd,
                 "branch": branch,
-                "is_active": pane.get("is_active", False),
-                "tty": pane.get("tty_name", ""),
+                "is_active": active == "1",
             })
         return sessions
     except Exception as e:
@@ -85,34 +75,31 @@ def get_sessions():
         return []
 
 
-def start_ttyd(pane_id, cwd=None):
-    """Start a ttyd process with a shell in the pane's working directory. Returns port number."""
+def start_ttyd(window_index):
+    """Start a ttyd process attached to a tmux window. Returns port number."""
     with ttyd_lock:
-        if pane_id in ttyd_procs:
-            proc_info = ttyd_procs[pane_id]
+        if window_index in ttyd_procs:
+            proc_info = ttyd_procs[window_index]
             if proc_info["proc"].poll() is None:
                 proc_info["last_access"] = time.time()
                 return proc_info["port"]
-            del ttyd_procs[pane_id]
+            del ttyd_procs[window_index]
 
-        port = TTYD_BASE_PORT + pane_id
+        port = TTYD_BASE_PORT + window_index
         try:
-            cmd = [
-                TTYD_BIN,
-                "-p", str(port),
-                "-W",  # writable
-                "-t", "fontSize=14",
-                "-t", "fontFamily=monospace",
-                "/bin/zsh", "-l",
-            ]
-            env = os.environ.copy()
             proc = subprocess.Popen(
-                cmd,
+                [
+                    TTYD_BIN,
+                    "-p", str(port),
+                    "-W",
+                    "-t", "fontSize=14",
+                    "-t", "fontFamily=monospace",
+                    TMUX_BIN, "attach", "-t", f"{TMUX_SESSION}:{window_index}",
+                ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                cwd=cwd or os.path.expanduser("~"),
             )
-            ttyd_procs[pane_id] = {
+            ttyd_procs[window_index] = {
                 "proc": proc,
                 "port": port,
                 "last_access": time.time(),
@@ -193,21 +180,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def _handle_terminal(self, path):
         try:
-            pane_id = int(path.split("/")[-1])
+            window_index = int(path.split("/")[-1])
         except ValueError:
-            self.send_error(400, "Invalid pane id")
+            self.send_error(400, "Invalid window index")
             return
 
-        # Find cwd for this pane
-        cwd = None
-        for s in get_sessions():
-            if s["pane_id"] == pane_id:
-                raw_path = s["path"].replace("~", os.path.expanduser("~"))
-                if os.path.isdir(raw_path):
-                    cwd = raw_path
-                break
-
-        port = start_ttyd(pane_id, cwd=cwd)
+        port = start_ttyd(window_index)
         if port is None:
             self.send_error(500, "Failed to start terminal")
             return

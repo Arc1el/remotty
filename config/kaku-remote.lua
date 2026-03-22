@@ -1,8 +1,8 @@
--- kaku-remote: config overrides for Kaku terminal
+-- kaku-remote: tmux-based session sharing for Kaku terminal
 local M = {}
 
 function M.apply(config)
-  -- no overrides currently — server reads Kaku tabs via CLI
+  config.default_prog = { '/opt/homebrew/bin/tmux', 'new-session', '-A', '-s', 'main' }
 end
 
 return M
