@@ -10,7 +10,7 @@ ok()   { echo -e "  ${GREEN}✓${NC} $1"; }
 fail() { echo -e "  ${RED}✗${NC} $1"; }
 warn() { echo -e "  ${YELLOW}!${NC} $1"; }
 
-echo "=== Kaku Remote Setup ==="
+echo "=== Remotty Setup ==="
 echo ""
 
 errors=0
@@ -69,7 +69,7 @@ fi
 
 echo ""
 if [ "$errors" -eq 0 ]; then
-  echo -e "${GREEN}All checks passed. Ready to use kaku-remote.${NC}"
+  echo -e "${GREEN}All checks passed. Ready to use remotty.${NC}"
 else
   echo -e "${RED}${errors} issue(s) found. Fix them and re-run.${NC}"
   exit 1

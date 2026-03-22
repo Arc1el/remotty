@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quick status check for kaku-remote
+# Quick status check for remotty
 # Used by Lua status bar and manual checks
 
 tailscale_up=false

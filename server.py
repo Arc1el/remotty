@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""kaku-remote: web dashboard for Kaku terminal sessions.
+"""remotty: web dashboard for terminal sessions.
 Lists tmux windows and provides shared web terminal access via ttyd.
 Zero dependencies — stdlib only.
 """
@@ -299,7 +299,7 @@ def main():
     reaper.start()
 
     server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"kaku-remote running on http://0.0.0.0:{PORT}")
+    print(f"remotty running on http://0.0.0.0:{PORT}")
 
     try:
         ts_ip = subprocess.run(

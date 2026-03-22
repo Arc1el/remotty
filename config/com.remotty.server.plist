@@ -3,20 +3,20 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.kaku-remote.server</string>
+    <string>com.remotty.server</string>
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/jayden/.local/bin/kaku-remote-server</string>
+        <string>/Users/jayden/.local/bin/remotty-server</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/kaku-remote.log</string>
+    <string>/tmp/remotty.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/kaku-remote.log</string>
+    <string>/tmp/remotty.log</string>
     <key>ThrottleInterval</key>
     <integer>5</integer>
 </dict>

@@ -1,4 +1,4 @@
--- kaku-remote: tmux-based session sharing for Kaku terminal
+-- remotty: tmux-based session sharing for terminal
 local M = {}
 
 function M.apply(config)
