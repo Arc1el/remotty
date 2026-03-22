@@ -1,5 +1,6 @@
 <p align="center">
-  <h1 align="center">remotty</h1>
+  <img src="web/remotty.svg" alt="Remotty" width="120" height="120">
+  <h1 align="center">Remotty</h1>
   <p align="center">
     <strong>Share your terminal sessions to the web. Instantly.</strong>
   </p>
@@ -10,7 +11,7 @@
 
 ---
 
-> **remotty** = remote + tty
+> **Remotty** = remote + tty
 
 Your terminal, accessible from any browser. Type on your phone, see it on your Mac. Or the other way around.
 

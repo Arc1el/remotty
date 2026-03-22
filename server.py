@@ -225,6 +225,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._serve_file("terminal.js", "application/javascript")
         elif path == "/terminal.css":
             self._serve_file("terminal.css", "text/css")
+        elif path == "/remotty.svg":
+            self._serve_file("remotty.svg", "image/svg+xml")
+        elif path == "/remotty_icon.ico":
+            self._serve_file("remotty_icon.ico", "image/x-icon")
         elif path == "/api/sessions":
             self._json_response(get_sessions())
         elif path.startswith("/api/terminal/"):
