@@ -2,8 +2,8 @@
 local M = {}
 
 function M.apply(config)
-  -- tmux-first: each Kaku tab = new tmux window (auto-starts server too)
-  config.default_prog = { '/bin/bash', '/Users/jayden/Documents/kaku-remote/scripts/kaku-tmux.sh' }
+  -- tmux-first: launch tmux directly (no external script)
+  config.default_prog = { '/opt/homebrew/bin/tmux', 'new-session', '-A', '-s', 'main' }
 end
 
 return M
