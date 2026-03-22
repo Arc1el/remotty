@@ -57,7 +57,7 @@ function render(sessions) {
   sessionsEl.querySelectorAll(".session-card").forEach(card => {
     card.addEventListener("click", () => {
       const idx = card.dataset.index;
-      window.open(`/api/terminal/${idx}`, "_blank");
+      window.location.href = `/terminal.html?window=${idx}`;
     });
   });
 }

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+  <title>Terminal</title>
+  <link rel="stylesheet" href="/terminal.css">
+</head>
+<body>
+  <div id="terminal-wrap">
+    <iframe id="term-frame" allowfullscreen></iframe>
+  </div>
+  <div id="controls">
+    <div id="gesture-area"></div>
+    <div id="btn-row">
+      <button data-key="Tab" class="key-btn small">Tab</button>
+      <button data-key="Up" class="key-btn arrow">&#9650;</button>
+      <button data-key="Escape" class="key-btn small">Esc</button>
+      <button data-key="Left" class="key-btn arrow">&#9664;</button>
+      <button data-key="Down" class="key-btn arrow">&#9660;</button>
+      <button data-key="Right" class="key-btn arrow">&#9654;</button>
+      <button data-key="Enter" class="key-btn enter">&#9166;</button>
+    </div>
+    <div id="extra-row">
+      <button data-key="C-c" class="key-btn small">C-c</button>
+      <button data-key="C-d" class="key-btn small">C-d</button>
+      <button data-key="C-z" class="key-btn small">C-z</button>
+      <button data-key="C-l" class="key-btn small">C-l</button>
+      <button data-key="Space" class="key-btn small">Space</button>
+      <button data-key="Backspace" class="key-btn small">&#9003;</button>
+    </div>
+  </div>
+  <script src="/terminal.js"></script>
+</body>
+</html>

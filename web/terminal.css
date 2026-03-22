@@ -1,0 +1,109 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#terminal-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#term-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #000;
+}
+
+#controls {
+  background: #161b22;
+  border-top: 1px solid #21262d;
+  padding: 8px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+#gesture-area {
+  height: 44px;
+  background: #21262d;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #484f58;
+  font-size: 12px;
+  touch-action: none;
+}
+
+#gesture-area::after {
+  content: 'swipe: arrow keys / long press: enter';
+}
+
+#gesture-area.active {
+  background: #30363d;
+}
+
+#btn-row, #extra-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+#btn-row {
+  margin-bottom: 6px;
+}
+
+.key-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #e6edf3;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+}
+
+.key-btn:active {
+  background: #388bfd;
+  border-color: #388bfd;
+}
+
+.key-btn.arrow {
+  width: 48px;
+  height: 44px;
+  font-size: 18px;
+}
+
+.key-btn.enter {
+  width: 56px;
+  height: 44px;
+  font-size: 20px;
+  background: #1a7f37;
+  border-color: #238636;
+}
+
+.key-btn.enter:active {
+  background: #238636;
+}
+
+.key-btn.small {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}

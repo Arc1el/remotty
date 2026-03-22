@@ -140,6 +140,25 @@ def ttyd_reaper():
                 del ttyd_procs[idx]
 
 
+def send_tmux_key(window_index, key):
+    """Send a key to a tmux window via send-keys."""
+    key_map = {
+        "Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right",
+        "Enter": "Enter", "Tab": "Tab", "Escape": "Escape",
+        "Backspace": "BSpace", "Space": "Space",
+        "C-c": "C-c", "C-d": "C-d", "C-z": "C-z", "C-l": "C-l",
+    }
+    tmux_key = key_map.get(key, key)
+    try:
+        subprocess.run(
+            [TMUX_BIN, "send-keys", "-t", f"{TMUX_SESSION}:{window_index}", tmux_key],
+            capture_output=True, timeout=3,
+        )
+        return True
+    except Exception:
+        return False
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -151,12 +170,45 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._serve_file("style.css", "text/css")
         elif path == "/app.js":
             self._serve_file("app.js", "application/javascript")
+        elif path == "/terminal.html":
+            self._serve_file("terminal.html", "text/html")
+        elif path == "/terminal.js":
+            self._serve_file("terminal.js", "application/javascript")
+        elif path == "/terminal.css":
+            self._serve_file("terminal.css", "text/css")
         elif path == "/api/sessions":
             self._json_response(get_sessions())
         elif path.startswith("/api/terminal/"):
             self._handle_terminal(path)
         else:
             self.send_error(404)
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip("/")
+
+        if path.startswith("/api/send-keys/"):
+            self._handle_send_keys(path)
+        else:
+            self.send_error(404)
+
+    def _handle_send_keys(self, path):
+        try:
+            window_index = int(path.split("/")[-1])
+        except ValueError:
+            self.send_error(400, "Invalid window index")
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length > 0 else {}
+        key = body.get("key", "")
+
+        if not key:
+            self.send_error(400, "Missing key")
+            return
+
+        ok = send_tmux_key(window_index, key)
+        self._json_response({"ok": ok})
 
     def _serve_file(self, filename, content_type):
         filepath = WEB_DIR / filename
@@ -191,9 +243,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
 
         host = self.headers.get("Host", "localhost").split(":")[0]
-        self.send_response(302)
-        self.send_header("Location", f"http://{host}:{port}")
-        self.end_headers()
+        self._json_response({"port": port, "url": f"http://{host}:{port}", "window": window_index})
 
     def _write(self, data):
         try:
