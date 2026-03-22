@@ -2,7 +2,7 @@
   <img src="web/remotty.svg" alt="Remotty" width="120" height="120">
   <h1 align="center">Remotty</h1>
   <p align="center">
-    <strong>Share your terminal sessions to the web. Instantly.</strong>
+    <strong>Your terminal, from anywhere. Even from your phone.</strong>
   </p>
   <p align="center">
     One Python file. Zero dependencies. No build step.
@@ -13,9 +13,13 @@
 
 > **Remotty** = remote + tty
 
-Your terminal, accessible from any browser. Type on your phone, see it on your Mac. Or the other way around.
+Running Claude Code overnight? Kicked off a long build? Left Codex working on a refactor?
+
+Check in from your phone. Scroll through the output. Type a command. All from a browser — no SSH app, no extra setup.
 
 ## Why remotty?
+
+Claude Code, Codex, and other AI agents run long tasks in your terminal. You shouldn't have to sit in front of your Mac waiting. Remotty lets you walk away and check back from any device.
 
 |  | remotty | others |
 |---|---|---|
@@ -35,6 +39,8 @@ Terminal → tmux → ttyd → Browser
 2. The server watches tmux and lists active windows
 3. Click a session in the web dashboard — you're in. Same session, same I/O
 
+Claude Code running in window 2? Tap it. You see exactly what it sees. You can type exactly as if you were there.
+
 ## Quick start
 
 ```bash
@@ -47,8 +53,9 @@ Open `http://localhost:7777`
 ## Features
 
 - **Session sharing** — web and terminal share the same session. Type in one, see it in the other
+- **Multiple windows** — run Claude Code in one window, your shell in another. Switch from the dashboard
 - **Create from web** — tap `+` to spawn a new terminal window from your browser
-- **Touch controls** — arrow keys, Enter, Ctrl shortcuts, all from your phone
+- **Touch controls** — arrow keys, Enter, Ctrl+C, all the keys you need on mobile
 - **Auto-cleanup** — close the terminal, sessions clean up automatically
 - **Auto-start** — server starts on login, restarts on crash (launchd)
 - **Tailscale ready** — access from anywhere via `http://<tailscale-ip>:7777`
@@ -70,6 +77,7 @@ tmux new-session -A -s remotty
 Auto-attach on terminal start (`~/.zshrc`):
 
 ```bash
+# remotty: auto-attach tmux session
 if [ -z "$TMUX" ]; then
   tmux new-session -A -s remotty
 fi
@@ -82,6 +90,8 @@ tailscale set --ssh
 tailscale ip -4            # get your IP
 # → http://100.x.x.x:7777 from any device
 ```
+
+Perfect for checking on long-running agent sessions from your couch.
 
 ## Commands
 
