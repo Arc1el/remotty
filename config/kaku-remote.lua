@@ -8,8 +8,8 @@ local M = {}
 local STATUS_SCRIPT = '/Users/jayden/Documents/kaku-remote/scripts/status.sh'
 
 function M.apply(config)
-  -- tmux-first: every new tab/window enters tmux session 'main'
-  config.default_prog = { '/opt/homebrew/bin/tmux', 'new-session', '-A', '-s', 'main' }
+  -- tmux-first: each Kaku tab = new tmux window (auto-starts server too)
+  config.default_prog = { '/bin/bash', '/Users/jayden/Documents/kaku-remote/scripts/kaku-tmux.sh' }
 
   -- Status bar: show Tailscale connection state
   local last_check = 0
