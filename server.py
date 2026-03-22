@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""kaku-remote: web dashboard + ttyd manager for tmux sessions.
+"""kaku-remote: web dashboard for Kaku terminal tabs.
+Lists open Kaku tabs and provides web terminal access via ttyd.
 Zero dependencies — stdlib only.
 """
 
@@ -12,61 +13,71 @@ import sys
 import threading
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote, urlsplit
 
 PORT = 7777
 TTYD_BASE_PORT = 7781
 TTYD_BIN = "ttyd"
-TMUX_SESSION = "main"
+KAKU_CLI = "/Applications/Kaku.app/Contents/MacOS/kaku"
 WEB_DIR = Path(__file__).parent / "web"
 
-# Track ttyd processes: {window_index: {"proc": Popen, "port": int, "last_access": float}}
+# Track ttyd processes: {pane_id: {"proc": Popen, "port": int, "last_access": float}}
 ttyd_procs = {}
 ttyd_lock = threading.Lock()
 
 
 def get_sessions():
-    """Get tmux window list with context info."""
+    """Get open Kaku tabs via CLI."""
     try:
-        fmt = "#{window_index}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}"
         result = subprocess.run(
-            ["tmux", "list-windows", "-t", TMUX_SESSION, "-F", fmt],
+            [KAKU_CLI, "cli", "list", "--format", "json"],
             capture_output=True, text=True, timeout=5,
         )
         if result.returncode != 0:
             return []
 
+        panes = json.loads(result.stdout)
+        home = os.path.expanduser("~")
         sessions = []
-        for line in result.stdout.strip().split("\n"):
-            if not line:
-                continue
-            parts = line.split("\t")
-            if len(parts) < 4:
-                continue
-            idx, name, path, cmd = parts[0], parts[1], parts[2], parts[3]
+
+        for pane in panes:
+            # Parse cwd from file://hostname/path URL
+            cwd_raw = pane.get("cwd", "")
+            if cwd_raw.startswith("file://"):
+                parsed_cwd = urlsplit(cwd_raw)
+                cwd = unquote(parsed_cwd.path)
+            else:
+                cwd = cwd_raw
+            cwd = cwd.rstrip("/")
+
+            # Shorten path
+            display_path = cwd.replace(home, "~") if cwd.startswith(home) else cwd
 
             # Get git branch
             branch = ""
-            try:
-                git_result = subprocess.run(
-                    ["git", "-C", path, "branch", "--show-current"],
-                    capture_output=True, text=True, timeout=3,
-                )
-                if git_result.returncode == 0:
-                    branch = git_result.stdout.strip()
-            except Exception:
-                pass
+            if cwd:
+                try:
+                    git_result = subprocess.run(
+                        ["git", "-C", cwd, "branch", "--show-current"],
+                        capture_output=True, text=True, timeout=3,
+                    )
+                    if git_result.returncode == 0:
+                        branch = git_result.stdout.strip()
+                except Exception:
+                    pass
 
-            # Shorten path
-            home = os.path.expanduser("~")
-            display_path = path.replace(home, "~") if path.startswith(home) else path
+            title = pane.get("tab_title") or pane.get("title") or "shell"
 
             sessions.append({
-                "index": int(idx),
-                "name": name,
+                "pane_id": pane["pane_id"],
+                "tab_id": pane["tab_id"],
+                "window_id": pane["window_id"],
+                "title": title,
                 "path": display_path,
-                "command": cmd,
+                "command": pane.get("title", ""),
                 "branch": branch,
+                "is_active": pane.get("is_active", False),
+                "tty": pane.get("tty_name", ""),
             })
         return sessions
     except Exception as e:
@@ -74,19 +85,19 @@ def get_sessions():
         return []
 
 
-def start_ttyd(window_index):
-    """Start a ttyd process for a specific tmux window. Returns port number."""
+def start_ttyd(pane_id):
+    """Start a ttyd process that connects to a Kaku pane. Returns port number."""
     with ttyd_lock:
-        if window_index in ttyd_procs:
-            proc_info = ttyd_procs[window_index]
+        if pane_id in ttyd_procs:
+            proc_info = ttyd_procs[pane_id]
             if proc_info["proc"].poll() is None:
                 proc_info["last_access"] = time.time()
                 return proc_info["port"]
-            # Dead process, clean up
-            del ttyd_procs[window_index]
+            del ttyd_procs[pane_id]
 
-        port = TTYD_BASE_PORT + window_index
+        port = TTYD_BASE_PORT + pane_id
         try:
+            # Use wezterm cli proxy to connect to the pane
             proc = subprocess.Popen(
                 [
                     TTYD_BIN,
@@ -94,12 +105,12 @@ def start_ttyd(window_index):
                     "-W",  # writable
                     "-t", "fontSize=14",
                     "-t", "fontFamily=monospace",
-                    "tmux", "attach", "-t", f"{TMUX_SESSION}:{window_index}",
+                    KAKU_CLI, "cli", "proxy",
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            ttyd_procs[window_index] = {
+            ttyd_procs[pane_id] = {
                 "proc": proc,
                 "port": port,
                 "last_access": time.time(),
@@ -168,7 +179,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", f"{content_type}; charset=utf-8")
         self.send_header("Content-Length", len(content))
         self.end_headers()
-        self.write(content)
+        self._write(content)
 
     def _json_response(self, data):
         body = json.dumps(data).encode()
@@ -176,39 +187,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", len(body))
         self.end_headers()
-        self.write(body)
+        self._write(body)
 
     def _handle_terminal(self, path):
         try:
-            window_index = int(path.split("/")[-1])
+            pane_id = int(path.split("/")[-1])
         except ValueError:
-            self.send_error(400, "Invalid window index")
+            self.send_error(400, "Invalid pane id")
             return
 
-        port = start_ttyd(window_index)
+        port = start_ttyd(pane_id)
         if port is None:
             self.send_error(500, "Failed to start terminal")
             return
 
-        # Redirect to ttyd on its port
         host = self.headers.get("Host", "localhost").split(":")[0]
         self.send_response(302)
         self.send_header("Location", f"http://{host}:{port}")
         self.end_headers()
 
-    def write(self, data):
+    def _write(self, data):
         try:
             self.wfile.write(data)
         except BrokenPipeError:
             pass
 
     def log_message(self, format, *args):
-        # Quiet logging
         pass
 
 
 def main():
-    # Start reaper thread
     reaper = threading.Thread(target=ttyd_reaper, daemon=True)
     reaper.start()
 

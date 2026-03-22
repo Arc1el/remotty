@@ -6,7 +6,7 @@ async function fetchSessions() {
     const res = await fetch("/api/sessions");
     if (!res.ok) throw new Error(res.statusText);
     const sessions = await res.json();
-    statusEl.textContent = `${sessions.length} sessions`;
+    statusEl.textContent = `${sessions.length} tab${sessions.length !== 1 ? "s" : ""}`;
     statusEl.classList.remove("offline");
     render(sessions);
   } catch (e) {
@@ -15,7 +15,7 @@ async function fetchSessions() {
     sessionsEl.innerHTML = `
       <div class="empty-state">
         <p>:(</p>
-        <p>tmux session not found</p>
+        <p>Kaku not running</p>
       </div>`;
   }
 }
@@ -25,16 +25,16 @@ function render(sessions) {
     sessionsEl.innerHTML = `
       <div class="empty-state">
         <p>-</p>
-        <p>No active windows</p>
+        <p>No open tabs</p>
       </div>`;
     return;
   }
 
   sessionsEl.innerHTML = sessions.map(s => `
-    <div class="session-card" data-index="${s.index}">
+    <div class="session-card${s.is_active ? " active" : ""}" data-pane="${s.pane_id}">
       <div class="card-header">
-        <span class="window-name">${esc(s.name)}</span>
-        <span class="window-index">#${s.index}</span>
+        <span class="window-name">${esc(s.title)}</span>
+        <span class="window-index">${s.is_active ? "●" : ""}</span>
       </div>
       <div class="card-body">
         <div class="info-row">
@@ -56,8 +56,8 @@ function render(sessions) {
 
   sessionsEl.querySelectorAll(".session-card").forEach(card => {
     card.addEventListener("click", () => {
-      const idx = card.dataset.index;
-      window.open(`/api/terminal/${idx}`, "_blank");
+      const paneId = card.dataset.pane;
+      window.open(`/api/terminal/${paneId}`, "_blank");
     });
   });
 }
