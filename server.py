@@ -17,7 +17,7 @@ from urllib.parse import urlparse, unquote, urlsplit
 
 PORT = 7777
 TTYD_BASE_PORT = 7781
-TTYD_BIN = "ttyd"
+TTYD_BIN = "/opt/homebrew/bin/ttyd"
 KAKU_CLI = "/Applications/Kaku.app/Contents/MacOS/kaku"
 WEB_DIR = Path(__file__).parent / "web"
 
@@ -85,8 +85,8 @@ def get_sessions():
         return []
 
 
-def start_ttyd(pane_id):
-    """Start a ttyd process that connects to a Kaku pane. Returns port number."""
+def start_ttyd(pane_id, cwd=None):
+    """Start a ttyd process with a shell in the pane's working directory. Returns port number."""
     with ttyd_lock:
         if pane_id in ttyd_procs:
             proc_info = ttyd_procs[pane_id]
@@ -97,18 +97,20 @@ def start_ttyd(pane_id):
 
         port = TTYD_BASE_PORT + pane_id
         try:
-            # Use wezterm cli proxy to connect to the pane
+            cmd = [
+                TTYD_BIN,
+                "-p", str(port),
+                "-W",  # writable
+                "-t", "fontSize=14",
+                "-t", "fontFamily=monospace",
+                "/bin/zsh", "-l",
+            ]
+            env = os.environ.copy()
             proc = subprocess.Popen(
-                [
-                    TTYD_BIN,
-                    "-p", str(port),
-                    "-W",  # writable
-                    "-t", "fontSize=14",
-                    "-t", "fontFamily=monospace",
-                    KAKU_CLI, "cli", "proxy",
-                ],
+                cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                cwd=cwd or os.path.expanduser("~"),
             )
             ttyd_procs[pane_id] = {
                 "proc": proc,
@@ -196,7 +198,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(400, "Invalid pane id")
             return
 
-        port = start_ttyd(pane_id)
+        # Find cwd for this pane
+        cwd = None
+        for s in get_sessions():
+            if s["pane_id"] == pane_id:
+                raw_path = s["path"].replace("~", os.path.expanduser("~"))
+                if os.path.isdir(raw_path):
+                    cwd = raw_path
+                break
+
+        port = start_ttyd(pane_id, cwd=cwd)
         if port is None:
             self.send_error(500, "Failed to start terminal")
             return
