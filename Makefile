@@ -3,31 +3,37 @@ KAKU_CONFIG := $(HOME)/.config/kaku/kaku.lua
 TMUX_CONFIG := $(HOME)/.tmux.conf
 REMOTE_LUA := $(CURDIR)/config/kaku-remote.lua
 REMOTE_TMUX := $(CURDIR)/config/tmux-remote.conf
-PID_FILE := /tmp/kaku-remote.pid
+LAUNCHD_PLIST := $(HOME)/Library/LaunchAgents/com.kaku-remote.server.plist
+SERVER_INSTALL_DIR := $(HOME)/.local/share/kaku-remote
+SERVER_LAUNCHER := $(HOME)/.local/bin/kaku-remote-server
 
 .PHONY: serve stop status setup install uninstall
 
 serve:
-	@if [ -f "$(PID_FILE)" ] && kill -0 $$(cat "$(PID_FILE)") 2>/dev/null; then \
-		echo "Already running (PID $$(cat $(PID_FILE)))"; \
-	else \
-		python3 "$(PROJECT_DIR)/server.py" & \
-		echo $$! > "$(PID_FILE)"; \
-		echo "Started (PID $$!)"; \
-	fi
+	@launchctl list | grep -q com.kaku-remote.server && echo "Already running (launchd)" || \
+		{ launchctl load "$(LAUNCHD_PLIST)" 2>/dev/null && echo "Started via launchd"; }
 
 stop:
-	@if [ -f "$(PID_FILE)" ]; then \
-		kill $$(cat "$(PID_FILE)") 2>/dev/null || true; \
-		rm -f "$(PID_FILE)"; \
-		echo "Stopped."; \
-	else \
-		echo "Not running."; \
-	fi
+	@launchctl unload "$(LAUNCHD_PLIST)" 2>/dev/null && echo "Stopped." || echo "Not running."
 	@pkill -f "ttyd.*tmux attach" 2>/dev/null || true
 
 install:
 	@echo "=== Installing kaku-remote ==="
+	@# Copy server files outside Documents (macOS sandbox restriction)
+	@mkdir -p "$(SERVER_INSTALL_DIR)" "$(HOME)/.local/bin"
+	@cp "$(PROJECT_DIR)/server.py" "$(SERVER_INSTALL_DIR)/server.py"
+	@cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
+	@echo "  Copied server to $(SERVER_INSTALL_DIR)"
+	@# Create launcher script
+	@echo '#!/bin/bash' > "$(SERVER_LAUNCHER)"
+	@echo 'cd ~/.local/share/kaku-remote' >> "$(SERVER_LAUNCHER)"
+	@echo 'exec /usr/bin/python3 server.py' >> "$(SERVER_LAUNCHER)"
+	@chmod +x "$(SERVER_LAUNCHER)"
+	@echo "  Created launcher at $(SERVER_LAUNCHER)"
+	@# Install launchd plist
+	@cp "$(PROJECT_DIR)/config/com.kaku-remote.server.plist" "$(LAUNCHD_PLIST)"
+	@launchctl load "$(LAUNCHD_PLIST)" 2>/dev/null || true
+	@echo "  Installed launchd service (auto-start on login)"
 	@# Add tmux-remote.conf to ~/.tmux.conf
 	@if ! grep -q 'kaku-remote' "$(TMUX_CONFIG)" 2>/dev/null; then \
 		echo 'source-file $(REMOTE_TMUX) # kaku-remote' >> "$(TMUX_CONFIG)"; \
@@ -51,6 +57,8 @@ f = open('$(KAKU_CONFIG)', 'w'); f.write(lines); f.close()"; \
 uninstall:
 	@echo "=== Uninstalling kaku-remote ==="
 	@$(MAKE) stop
+	@rm -rf "$(SERVER_INSTALL_DIR)" "$(SERVER_LAUNCHER)" "$(LAUNCHD_PLIST)"
+	@echo "  Removed server, launcher, and launchd service"
 	@if grep -q 'kaku-remote' "$(TMUX_CONFIG)" 2>/dev/null; then \
 		sed -i '' '/kaku-remote/d' "$(TMUX_CONFIG)"; \
 		echo "  Removed from ~/.tmux.conf"; \
