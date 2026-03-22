@@ -1,7 +1,7 @@
 #!/bin/bash
-# Each Kaku tab opens in tmux session "main".
+# Each tab opens in tmux session "remotty".
 
-SESSION="main"
+SESSION="remotty"
 
 if tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux attach -t "$SESSION"

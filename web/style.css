@@ -21,25 +21,99 @@ h1 {
   font-weight: 600;
 }
 
-#header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#new-window-btn {
-  font-size: 12px;
-  padding: 4px 12px;
-  border-radius: 8px;
-  border: 1px solid #238636;
+#fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
   background: #238636;
   color: #fff;
+  font-size: 28px;
+  font-weight: 300;
   cursor: pointer;
-  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s, background 0.15s;
+  z-index: 10;
+}
+
+#fab:active {
+  background: #2ea043;
+  transform: scale(0.9);
+}
+
+#dialog-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20;
+  align-items: center;
+  justify-content: center;
+}
+
+#dialog-overlay.show {
+  display: flex;
+}
+
+#dialog {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 20px;
+  width: 280px;
+}
+
+#dialog-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: #e6edf3;
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 12px;
+}
+
+#dialog-input:focus {
+  border-color: #388bfd;
+}
+
+#dialog-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+#dialog-cancel, #dialog-ok {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid #30363d;
+  font-size: 13px;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-#new-window-btn:active {
+#dialog-cancel {
+  background: #21262d;
+  color: #c9d1d9;
+}
+
+#dialog-ok {
+  background: #238636;
+  border-color: #238636;
+  color: #fff;
+  font-weight: 600;
+}
+
+#dialog-ok:active {
   background: #2ea043;
 }
 

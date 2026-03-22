@@ -9,12 +9,19 @@
 <body>
   <header>
     <h1>Remotty</h1>
-    <div id="header-right">
-      <button id="new-window-btn" onclick="createWindow()">+ New</button>
-      <span id="status" class="status"></span>
-    </div>
+    <span id="status" class="status"></span>
   </header>
   <main id="sessions"></main>
+  <button id="fab" onclick="showNewDialog()">+</button>
+  <div id="dialog-overlay" onclick="hideNewDialog()">
+    <div id="dialog" onclick="event.stopPropagation()">
+      <input id="dialog-input" type="text" placeholder="Window name" autocomplete="off" />
+      <div id="dialog-btns">
+        <button id="dialog-cancel" onclick="hideNewDialog()">Cancel</button>
+        <button id="dialog-ok" onclick="createWindow()">Create</button>
+      </div>
+    </div>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>

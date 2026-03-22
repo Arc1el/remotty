@@ -68,20 +68,34 @@ function esc(str) {
   return el.innerHTML;
 }
 
+function showNewDialog() {
+  const overlay = document.getElementById("dialog-overlay");
+  const input = document.getElementById("dialog-input");
+  overlay.classList.add("show");
+  input.value = "";
+  input.focus();
+}
+
+function hideNewDialog() {
+  document.getElementById("dialog-overlay").classList.remove("show");
+}
+
+document.getElementById("dialog-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") createWindow();
+  if (e.key === "Escape") hideNewDialog();
+});
+
 async function createWindow() {
-  const name = prompt("Window name (leave empty for default):");
-  if (name === null) return; // cancelled
+  const name = document.getElementById("dialog-input").value.trim();
+  hideNewDialog();
 
   const res = await fetch("/api/new-window", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: name || "" }),
+    body: JSON.stringify({ name }),
   });
 
-  if (!res.ok) {
-    alert("Failed to create window");
-    return;
-  }
+  if (!res.ok) return;
 
   const data = await res.json();
   window.location.href = `/terminal.html?window=${data.index}`;

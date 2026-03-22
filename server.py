@@ -19,7 +19,7 @@ PORT = 7777
 TTYD_BASE_PORT = 7781
 TTYD_BIN = "/opt/homebrew/bin/ttyd"
 TMUX_BIN = "/opt/homebrew/bin/tmux"
-TMUX_SESSION = "main"
+TMUX_SESSION = "remotty"
 WEB_DIR = Path(__file__).parent / "web"
 
 # Track ttyd processes: {window_index: {"proc": Popen, "port": int, "last_access": float}}

@@ -18,8 +18,8 @@ if command -v tailscale &>/dev/null; then
 fi
 
 # tmux session
-if tmux has-session -t main 2>/dev/null; then
-  tmux_session="main"
+if tmux has-session -t remotty 2>/dev/null; then
+  tmux_session="remotty"
 fi
 
 # Output for Lua parsing (single line)
