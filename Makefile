@@ -7,7 +7,7 @@ LAUNCHD_PLIST := $(HOME)/Library/LaunchAgents/com.kaku-remote.server.plist
 SERVER_INSTALL_DIR := $(HOME)/.local/share/kaku-remote
 SERVER_LAUNCHER := $(HOME)/.local/bin/kaku-remote-server
 
-.PHONY: serve stop status setup install uninstall
+.PHONY: serve stop status setup install uninstall sync
 
 serve:
 	@launchctl list | grep -q com.kaku-remote.server && echo "Already running (launchd)" || \
@@ -68,6 +68,13 @@ uninstall:
 		echo "  Removed from kaku.lua"; \
 	fi
 	@echo "  Done. Restart Kaku to apply."
+
+sync:
+	@cp "$(PROJECT_DIR)/server.py" "$(SERVER_INSTALL_DIR)/server.py"
+	@cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
+	@$(MAKE) stop
+	@$(MAKE) serve
+	@echo "Synced and restarted."
 
 status:
 	@bash scripts/status.sh
