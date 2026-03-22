@@ -21,6 +21,28 @@ h1 {
   font-weight: 600;
 }
 
+#header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#new-window-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid #238636;
+  background: #238636;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#new-window-btn:active {
+  background: #2ea043;
+}
+
 .status {
   font-size: 12px;
   padding: 4px 10px;

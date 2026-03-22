@@ -68,5 +68,24 @@ function esc(str) {
   return el.innerHTML;
 }
 
+async function createWindow() {
+  const name = prompt("Window name (leave empty for default):");
+  if (name === null) return; // cancelled
+
+  const res = await fetch("/api/new-window", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name || "" }),
+  });
+
+  if (!res.ok) {
+    alert("Failed to create window");
+    return;
+  }
+
+  const data = await res.json();
+  window.location.href = `/terminal.html?window=${data.index}`;
+}
+
 fetchSessions();
 setInterval(fetchSessions, 3000);

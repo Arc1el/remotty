@@ -140,6 +140,20 @@ def ttyd_reaper():
                 del ttyd_procs[idx]
 
 
+def create_tmux_window(name=None):
+    """Create a new tmux window. Returns window index or None."""
+    try:
+        cmd = [TMUX_BIN, "new-window", "-t", TMUX_SESSION, "-P", "-F", "#{window_index}"]
+        if name:
+            cmd.extend(["-n", name])
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            return int(result.stdout.strip())
+        return None
+    except Exception:
+        return None
+
+
 def send_tmux_key(window_index, key):
     """Send a key to a tmux window via send-keys."""
     key_map = {
@@ -206,12 +220,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
 
-        if path.startswith("/api/send-keys/"):
+        if path == "/api/new-window":
+            self._handle_new_window()
+        elif path.startswith("/api/send-keys/"):
             self._handle_send_keys(path)
         elif path.startswith("/api/send-text/"):
             self._handle_send_text(path)
         else:
             self.send_error(404)
+
+    def _handle_new_window(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length > 0 else {}
+        name = body.get("name", "").strip() or None
+
+        window_index = create_tmux_window(name)
+        if window_index is None:
+            self.send_error(500, "Failed to create window")
+            return
+
+        self._json_response({"ok": True, "index": window_index, "name": name})
 
     def _handle_send_keys(self, path):
         try:
