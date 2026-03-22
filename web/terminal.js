@@ -17,7 +17,10 @@ async function loadTerminal() {
   document.getElementById("term-frame").src = data.url;
 }
 
-// Send key via API
+// Shift state
+let shiftActive = false;
+const shiftBtn = document.getElementById("shift-btn");
+
 function sendKey(key) {
   fetch(`/api/send-keys/${windowIndex}`, {
     method: "POST",
@@ -26,113 +29,101 @@ function sendKey(key) {
   });
 }
 
+// Quick commands
+document.getElementById("btn-claude").addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  sendText("claude");
+});
+
+document.getElementById("btn-exit").addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  sendText("exit");
+});
+
+function sendText(text) {
+  fetch(`/api/send-text/${windowIndex}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+}
+
 // Button clicks
 document.querySelectorAll(".key-btn").forEach(btn => {
   btn.addEventListener("click", (e) => {
     e.preventDefault();
-    sendKey(btn.dataset.key);
+    const key = btn.dataset.key;
+
+    if (key === "Shift") {
+      shiftActive = !shiftActive;
+      shiftBtn.classList.toggle("active", shiftActive);
+      return;
+    }
+
+    if (shiftActive) {
+      sendKey("S-" + key);
+      shiftActive = false;
+      shiftBtn.classList.remove("active");
+    } else {
+      sendKey(key);
+    }
   });
 });
 
-// Gesture area: swipe + long press
-const gesture = document.getElementById("gesture-area");
-let touchStartX, touchStartY, touchStartTime, longPressTimer, gestureHandled;
+// Resize handle for wide layout
+const handle = document.getElementById("resize-handle");
+const controls = document.getElementById("controls");
 
-gesture.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  const t = e.touches[0];
-  touchStartX = t.clientX;
-  touchStartY = t.clientY;
-  touchStartTime = Date.now();
-  gestureHandled = false;
-  gesture.classList.add("active");
+if (handle && controls) {
+  let dragging = false;
 
-  longPressTimer = setTimeout(() => {
-    if (!gestureHandled) {
-      gestureHandled = true;
-      sendKey("Enter");
-      // Haptic feedback if available
-      if (navigator.vibrate) navigator.vibrate(30);
-    }
-  }, 400);
-});
-
-gesture.addEventListener("touchmove", (e) => {
-  e.preventDefault();
-  if (gestureHandled) return;
-
-  const t = e.touches[0];
-  const dx = t.clientX - touchStartX;
-  const dy = t.clientY - touchStartY;
-  const threshold = 30;
-
-  if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-    clearTimeout(longPressTimer);
-    gestureHandled = true;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      sendKey(dx > 0 ? "Right" : "Left");
-    } else {
-      sendKey(dy > 0 ? "Down" : "Up");
-    }
-
-    // Reset for continuous swipes
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
-    gestureHandled = false;
+  function onDragStart(e) {
+    dragging = true;
+    document.body.classList.add("resizing");
+    e.preventDefault();
   }
-});
 
-gesture.addEventListener("touchend", (e) => {
-  e.preventDefault();
-  clearTimeout(longPressTimer);
-  gesture.classList.remove("active");
-});
-
-// Mouse fallback for gesture area
-let mouseDown = false;
-gesture.addEventListener("mousedown", (e) => {
-  mouseDown = true;
-  touchStartX = e.clientX;
-  touchStartY = e.clientY;
-  gestureHandled = false;
-  gesture.classList.add("active");
-
-  longPressTimer = setTimeout(() => {
-    if (!gestureHandled) {
-      gestureHandled = true;
-      sendKey("Enter");
-    }
-  }, 400);
-});
-
-document.addEventListener("mousemove", (e) => {
-  if (!mouseDown || gestureHandled) return;
-
-  const dx = e.clientX - touchStartX;
-  const dy = e.clientY - touchStartY;
-  const threshold = 30;
-
-  if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-    clearTimeout(longPressTimer);
-    gestureHandled = true;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      sendKey(dx > 0 ? "Right" : "Left");
-    } else {
-      sendKey(dy > 0 ? "Down" : "Up");
-    }
-
-    touchStartX = e.clientX;
-    touchStartY = e.clientY;
-    gestureHandled = false;
+  function onDragMove(e) {
+    if (!dragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const isLeft = document.body.classList.contains("controls-left");
+    const newWidth = isLeft
+      ? clientX - handle.offsetWidth
+      : window.innerWidth - clientX - handle.offsetWidth;
+    const clamped = Math.max(80, Math.min(newWidth, window.innerWidth * 0.4));
+    controls.style.width = clamped + "px";
   }
-});
 
-document.addEventListener("mouseup", () => {
-  mouseDown = false;
-  clearTimeout(longPressTimer);
-  gesture.classList.remove("active");
-});
+  function onDragEnd() {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove("resizing");
+  }
+
+  handle.addEventListener("mousedown", onDragStart);
+  handle.addEventListener("touchstart", onDragStart);
+  document.addEventListener("mousemove", onDragMove);
+  document.addEventListener("touchmove", onDragMove);
+  document.addEventListener("mouseup", onDragEnd);
+  document.addEventListener("touchend", onDragEnd);
+}
+
+// Side toggle with animation
+function toggleSide() {
+  const goingLeft = !document.body.classList.contains("controls-left");
+  document.body.classList.remove("slide-to-left", "slide-to-right");
+  document.body.classList.toggle("controls-left");
+  // Force reflow so animation restarts
+  void document.body.offsetWidth;
+  document.body.classList.add(goingLeft ? "slide-to-left" : "slide-to-right");
+  localStorage.setItem("controls-side", goingLeft ? "left" : "right");
+}
+
+// Restore saved side preference
+if (localStorage.getItem("controls-side") === "left") {
+  document.body.classList.add("controls-left");
+}
 
 loadTerminal();

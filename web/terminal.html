@@ -4,30 +4,49 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Terminal</title>
-  <link rel="stylesheet" href="/terminal.css">
+  <link rel="stylesheet" href="/terminal.css?v=17">
 </head>
 <body>
   <div id="terminal-wrap">
     <iframe id="term-frame" allowfullscreen></iframe>
   </div>
+  <div id="resize-handle"></div>
   <div id="controls">
-    <div id="gesture-area"></div>
-    <div id="btn-row">
-      <button data-key="Tab" class="key-btn small">Tab</button>
-      <button data-key="Up" class="key-btn arrow">&#9650;</button>
-      <button data-key="Escape" class="key-btn small">Esc</button>
-      <button data-key="Left" class="key-btn arrow">&#9664;</button>
-      <button data-key="Down" class="key-btn arrow">&#9660;</button>
-      <button data-key="Right" class="key-btn arrow">&#9654;</button>
-      <button data-key="Enter" class="key-btn enter">&#9166;</button>
-    </div>
-    <div id="extra-row">
-      <button data-key="C-c" class="key-btn small">C-c</button>
-      <button data-key="C-d" class="key-btn small">C-d</button>
-      <button data-key="C-z" class="key-btn small">C-z</button>
-      <button data-key="C-l" class="key-btn small">C-l</button>
-      <button data-key="Space" class="key-btn small">Space</button>
-      <button data-key="Backspace" class="key-btn small">&#9003;</button>
+    <button id="side-toggle" onclick="toggleSide()">&#8644;</button>
+    <div id="main-controls">
+      <div id="mod-keys">
+        <button data-key="Escape" class="key-btn mod">Esc</button>
+        <button data-key="Tab" class="key-btn mod">Tab</button>
+        <button data-key="Shift" class="key-btn mod" id="shift-btn">Shift</button>
+        <button data-key="C-c" class="key-btn mod">^C</button>
+        <button data-key="C-d" class="key-btn mod">^D</button>
+        <button data-key="C-z" class="key-btn mod">^Z</button>
+        <button data-key="C-l" class="key-btn mod">^L</button>
+      </div>
+      <div id="quick-keys">
+        <button class="key-btn quick" id="btn-claude">claude</button>
+        <button class="key-btn quick" id="btn-exit">exit</button>
+        <button class="key-btn quick" id="btn-back" onclick="location.href='/'">Sessions</button>
+      </div>
+      <div id="dpad-and-action">
+        <div id="dpad">
+          <div class="dpad-row">
+            <button data-key="Up" class="key-btn arrow">&#9650;</button>
+          </div>
+          <div class="dpad-row">
+            <button data-key="Left" class="key-btn arrow">&#9664;</button>
+            <button data-key="Down" class="key-btn arrow">&#9660;</button>
+            <button data-key="Right" class="key-btn arrow">&#9654;</button>
+          </div>
+        </div>
+        <div id="action-keys">
+          <button data-key="Enter" class="key-btn enter">Enter</button>
+          <div id="action-sub">
+            <button data-key="Space" class="key-btn action">Space</button>
+            <button data-key="Backspace" class="key-btn action">&#9003;</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <script src="/terminal.js"></script>

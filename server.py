@@ -147,11 +147,30 @@ def send_tmux_key(window_index, key):
         "Enter": "Enter", "Tab": "Tab", "Escape": "Escape",
         "Backspace": "BSpace", "Space": "Space",
         "C-c": "C-c", "C-d": "C-d", "C-z": "C-z", "C-l": "C-l",
+        "S-Up": "S-Up", "S-Down": "S-Down", "S-Left": "S-Left", "S-Right": "S-Right",
+        "S-Enter": "S-Enter", "S-Tab": "S-BTab", "S-Escape": "S-Escape",
+        "S-Backspace": "S-BSpace", "S-Space": "S-Space",
     }
     tmux_key = key_map.get(key, key)
     try:
         subprocess.run(
             [TMUX_BIN, "send-keys", "-t", f"{TMUX_SESSION}:{window_index}", tmux_key],
+            capture_output=True, timeout=3,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def send_tmux_text(window_index, text):
+    """Send literal text + Enter to a tmux window."""
+    try:
+        subprocess.run(
+            [TMUX_BIN, "send-keys", "-t", f"{TMUX_SESSION}:{window_index}", "-l", text],
+            capture_output=True, timeout=3,
+        )
+        subprocess.run(
+            [TMUX_BIN, "send-keys", "-t", f"{TMUX_SESSION}:{window_index}", "Enter"],
             capture_output=True, timeout=3,
         )
         return True
@@ -189,6 +208,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith("/api/send-keys/"):
             self._handle_send_keys(path)
+        elif path.startswith("/api/send-text/"):
+            self._handle_send_text(path)
         else:
             self.send_error(404)
 
@@ -208,6 +229,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
 
         ok = send_tmux_key(window_index, key)
+        self._json_response({"ok": ok})
+
+    def _handle_send_text(self, path):
+        try:
+            window_index = int(path.split("/")[-1])
+        except ValueError:
+            self.send_error(400, "Invalid window index")
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length > 0 else {}
+        text = body.get("text", "")
+
+        if not text:
+            self.send_error(400, "Missing text")
+            return
+
+        ok = send_tmux_text(window_index, text)
         self._json_response({"ok": ok})
 
     def _serve_file(self, filename, content_type):
