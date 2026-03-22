@@ -141,8 +141,24 @@ def ttyd_reaper():
 
 
 def create_tmux_window(name=None):
-    """Create a new tmux window. Returns window index or None."""
+    """Create a new tmux window. Creates session if needed. Returns window index or None."""
     try:
+        # Check if session exists, create if not
+        check = subprocess.run(
+            [TMUX_BIN, "has-session", "-t", TMUX_SESSION],
+            capture_output=True, timeout=3,
+        )
+        if check.returncode != 0:
+            # Create detached session
+            cmd = [TMUX_BIN, "new-session", "-d", "-s", TMUX_SESSION, "-P", "-F", "#{window_index}"]
+            if name:
+                cmd.extend(["-n", name])
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                return int(result.stdout.strip())
+            return None
+
+        # Session exists, add window
         cmd = [TMUX_BIN, "new-window", "-t", TMUX_SESSION, "-P", "-F", "#{window_index}"]
         if name:
             cmd.extend(["-n", name])
