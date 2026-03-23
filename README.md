@@ -112,7 +112,11 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
 - **Dark / Light theme** — toggle in the dashboard header. Glassmorphism UI with backdrop blur
 
 ## Voice input (STT)
-
+<p align="center">
+  <img src="web/stt-demo.gif" alt="STT demo — speak a command into your terminal" width="300">
+  <br>
+  <em>Speak a command. It types into your terminal.</em>
+</p>
 Tap the **STT** button in the terminal controls to start listening. A bar appears with:
 
 - Your transcribed text (live preview)

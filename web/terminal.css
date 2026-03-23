@@ -253,21 +253,18 @@ html {
 /* Voice status bar */
 #voice-bar {
   position: fixed;
-  bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px));
-  right: 12px;
-  z-index: 100;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   background: var(--bg);
-  border: 1px solid var(--border-hover);
-  border-radius: 12px;
-  padding: 8px 12px;
-  min-height: 40px;
-  max-width: 280px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  min-height: 44px;
 }
 
 #voice-bar.voice-hidden {
@@ -279,30 +276,28 @@ html {
   min-width: 32px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid var(--border-hover);
+  border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--text-dim);
   font-size: 11px;
   font-weight: 700;
-  font-family: inherit;
+  font-family: 'SF Mono', 'Menlo', monospace;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.2s, border-color 0.2s;
 }
 
 #voice-lang:active {
   color: var(--accent);
-  border-color: var(--accent);
 }
 
 #voice-text {
   flex: 1;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text);
-  font-family: inherit;
+  font-family: 'SF Mono', 'Menlo', monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -318,7 +313,7 @@ html {
   width: 36px;
   height: 32px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid var(--green);
   background: var(--green);
   color: #fff;
   font-size: 14px;
@@ -677,4 +672,14 @@ html {
     pointer-events: none;
   }
 
+  /* Voice bar: bottom, full width minus controls panel */
+  #voice-bar {
+    bottom: 0 !important;
+    right: 126px; /* controls width(120) + resize handle(6) */
+  }
+
+  body.controls-left #voice-bar {
+    left: 126px;
+    right: 0;
+  }
 }

@@ -260,6 +260,13 @@ function toggleLang() {
   localStorage.setItem("voice-lang", langIndex);
 }
 
+function positionVoiceBar() {
+  const controlsEl = document.getElementById("controls");
+  if (controlsEl) {
+    voiceBar.style.bottom = controlsEl.offsetHeight + "px";
+  }
+}
+
 // Mic button: tap = record
 addTouchClick("mic-btn", () => {
   if (isRecording) stopVoice();
@@ -283,7 +290,9 @@ function startVoice() {
   isRecording = true;
   micBtn.classList.add("recording");
   voiceBar.classList.remove("voice-hidden");
+  positionVoiceBar();
   voiceText.textContent = "";
+  voiceText.style.color = "";
 
   recognition.onresult = (event) => {
     const result = event.results[event.results.length - 1];
@@ -292,12 +301,20 @@ function startVoice() {
 
   recognition.onerror = (event) => {
     if (event.error !== "aborted") {
+      voiceText.textContent = `Error: ${event.error}`;
+      voiceText.style.color = "var(--red)";
       console.error("Speech recognition error:", event.error);
+    } else {
+      stopVoice();
     }
-    stopVoice();
   };
 
   recognition.onend = () => {
+    // If no result was captured, show hint
+    if (isRecording && !voiceText.textContent) {
+      voiceText.textContent = "No speech detected. Try again.";
+      voiceText.style.color = "var(--text-dim)";
+    }
     isRecording = false;
     micBtn.classList.remove("recording");
   };
