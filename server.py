@@ -428,12 +428,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(502)
             return
 
+        # Keep ttyd alive while being accessed via proxy
+        with ttyd_lock:
+            if window_index in ttyd_procs:
+                ttyd_procs[window_index]["last_access"] = time.time()
+
         target = path
         if parsed.query:
             target += "?" + parsed.query
 
         if self.headers.get("Upgrade", "").lower() == "websocket":
-            self._proxy_websocket(port, target)
+            self._proxy_websocket(port, target, window_index)
             return
 
         # HTTP proxy with retry
@@ -459,7 +464,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 break
         self.send_error(502)
 
-    def _proxy_websocket(self, port, path):
+    def _proxy_websocket(self, port, path, window_index=None):
         """Proxy WebSocket connection to local ttyd."""
         for attempt in range(3):
             try:
@@ -503,15 +508,40 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 backend.close()
                 return
 
+        # Ensure no timeouts on relay sockets
+        backend.settimeout(None)
+        try:
+            self.request.settimeout(None)
+        except Exception:
+            pass
+
         closed = threading.Event()
+        last_keepalive = [time.time()]
 
         def relay(src, dst):
             try:
                 while not closed.is_set():
-                    data = src.recv(65536)
+                    try:
+                        data = src.recv(65536)
+                    except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                        continue
+                    except (ssl.SSLEOFError, ssl.SSLZeroReturnError):
+                        break
                     if not data:
                         break
-                    dst.sendall(data)
+                    try:
+                        dst.sendall(data)
+                    except (ssl.SSLWantWriteError,):
+                        continue
+                    # Periodic keepalive update (not every packet)
+                    now = time.time()
+                    if window_index is not None and now - last_keepalive[0] > 30:
+                        last_keepalive[0] = now
+                        with ttyd_lock:
+                            if window_index in ttyd_procs:
+                                ttyd_procs[window_index]["last_access"] = now
+            except (ConnectionResetError, BrokenPipeError, OSError):
+                pass
             except Exception:
                 pass
             finally:

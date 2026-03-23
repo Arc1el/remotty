@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=23">
+  <link rel="stylesheet" href="/terminal.css?v=24">
 </head>
 <body>
   <div id="session-bar"></div>
@@ -52,6 +52,12 @@
       </div>
     </div>
     </div>
+  </div>
+  <button id="mic-fab"><span id="mic-lang">EN</span><span id="mic-icon">&#127908;</span></button>
+  <div id="voice-bar" class="voice-hidden">
+    <span id="voice-text"></span>
+    <button id="voice-send">&#10003;</button>
+    <button id="voice-cancel">&#10005;</button>
   </div>
   <script src="/terminal.js"></script>
 </body>

@@ -80,7 +80,19 @@ async function loadTerminal() {
     return;
   }
   const data = await res.json();
-  document.getElementById("term-frame").src = data.url;
+  const frame = document.getElementById("term-frame");
+  frame.src = data.url;
+  // Remove ttyd's beforeunload handler
+  frame.addEventListener("load", () => {
+    try {
+      const w = frame.contentWindow;
+      w.onbeforeunload = null;
+      w.addEventListener("beforeunload", (e) => {
+        e.stopImmediatePropagation();
+      }, true);
+      setTimeout(() => { w.onbeforeunload = null; }, 2000);
+    } catch (e) {}
+  });
 }
 
 // Shift state
@@ -217,6 +229,132 @@ scrollOverlay.addEventListener("wheel", (e) => {
 });
 
 
+// Voice recognition
+const micFab = document.getElementById("mic-fab");
+const micLang = document.getElementById("mic-lang");
+const voiceBar = document.getElementById("voice-bar");
+const voiceText = document.getElementById("voice-text");
+const voiceSendBtn = document.getElementById("voice-send");
+const voiceCancelBtn = document.getElementById("voice-cancel");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+
+const langs = [
+  { code: "en-US", label: "EN" },
+  { code: "ko-KR", label: "한" },
+];
+let langIndex = parseInt(localStorage.getItem("voice-lang") || "0");
+micLang.textContent = langs[langIndex].label;
+
+function toggleLang() {
+  langIndex = (langIndex + 1) % langs.length;
+  micLang.textContent = langs[langIndex].label;
+  localStorage.setItem("voice-lang", langIndex);
+}
+
+// FAB: tap = mic, long press = toggle language
+let longPressTimer = null;
+let didLongPress = false;
+
+micFab.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  didLongPress = false;
+  longPressTimer = setTimeout(() => {
+    didLongPress = true;
+    toggleLang();
+  }, 500);
+});
+
+micFab.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  clearTimeout(longPressTimer);
+  if (!didLongPress) {
+    if (isRecording) stopVoice();
+    else startVoice();
+  }
+});
+
+micFab.addEventListener("touchmove", () => clearTimeout(longPressTimer));
+
+micFab.addEventListener("mousedown", () => {
+  didLongPress = false;
+  longPressTimer = setTimeout(() => {
+    didLongPress = true;
+    toggleLang();
+  }, 500);
+});
+
+micFab.addEventListener("mouseup", () => {
+  clearTimeout(longPressTimer);
+  if (!didLongPress) {
+    if (isRecording) stopVoice();
+    else startVoice();
+  }
+});
+
+function startVoice() {
+  if (!SpeechRecognition) {
+    alert("This browser does not support speech recognition.");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = langs[langIndex].code;
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  isRecording = true;
+  micFab.classList.add("recording");
+  voiceBar.classList.remove("voice-hidden");
+  voiceText.textContent = "";
+
+  recognition.onresult = (event) => {
+    const result = event.results[event.results.length - 1];
+    voiceText.textContent = result[0].transcript;
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error !== "aborted") {
+      console.error("Speech recognition error:", event.error);
+    }
+    stopVoice();
+  };
+
+  recognition.onend = () => {
+    isRecording = false;
+    micFab.classList.remove("recording");
+  };
+
+  recognition.start();
+}
+
+function stopVoice() {
+  if (recognition) {
+    recognition.abort();
+    recognition = null;
+  }
+  isRecording = false;
+  micFab.classList.remove("recording");
+}
+
+function sendVoiceText() {
+  const text = voiceText.textContent.trim();
+  stopVoice();
+  voiceBar.classList.add("voice-hidden");
+  if (text) sendText(text);
+}
+
+function cancelVoice() {
+  stopVoice();
+  voiceBar.classList.add("voice-hidden");
+  voiceText.textContent = "";
+}
+
+addTouchClick("voice-send", sendVoiceText);
+addTouchClick("voice-cancel", cancelVoice);
+
 // Resize handle for wide layout
 const handle = document.getElementById("resize-handle");
 const controls = document.getElementById("controls");
@@ -270,6 +408,11 @@ function toggleSide() {
 if (localStorage.getItem("controls-side") === "left") {
   document.body.classList.add("controls-left");
 }
+
+// Suppress "leave site?" dialogs from ttyd iframe
+window.addEventListener("beforeunload", (e) => {
+  e.stopImmediatePropagation();
+}, true);
 
 loadTerminal();
 loadSessions();
