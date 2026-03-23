@@ -69,6 +69,21 @@ https://localhost:7777
 **`https://`**, not `http://`. `make install` runs the server with HTTPS enabled.
 On first visit, your browser will show a security warning — tap "Advanced" → "Proceed" once.
 
+## Access from your phone with Tailscale (recommended)
+
+**We strongly recommend setting up [Tailscale](https://tailscale.com/docs/how-to/quickstart).** It gives your MacBook a fixed IP that works everywhere — same Wi-Fi, phone hotspot, coffee shop, or across the globe. No port forwarding, no VPN config, just install and it works.
+
+```bash
+brew install tailscale     # on your Mac
+tailscale login            # authenticate (opens browser)
+tailscale ip -4            # get your stable IP
+# → https://100.x.x.x:7777 from any device on your tailnet
+```
+
+Install Tailscale on your phone too ([iOS](https://apps.apple.com/app/tailscale/id1470499037) / [Android](https://play.google.com/store/apps/details?id=com.tailscale.ipn)) and log in with the same account. Bookmark `https://100.x.x.x:7777` — it always connects, whether you're on the same network or not.
+
+> **No Tailscale?** If your phone and Mac are on the same network (Wi-Fi or hotspot), connect via your Mac's local IP. Or use the **phone hotspot trick** — connect your MacBook to your phone's hotspot, close the lid, put it in your bag, and open `https://localhost:7777` on your phone.
+
 ## Features
 
 ### Mobile-first controls
@@ -141,27 +156,6 @@ Your browser will show a security warning on first visit — tap "Advanced" → 
 **Why the warning is fine:** The certificate is self-signed (not verified by a CA), but the connection is still fully encrypted. Since you own both the server and the client, there's no real security concern — this is standard for local/private servers.
 
 **Why HTTPS matters:** Speech-to-Text, microphone access, and other modern browser APIs require a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts). HTTPS provides that, even with a self-signed cert.
-
-## Remote access via Tailscale (recommended)
-
-**We strongly recommend setting up [Tailscale](https://tailscale.com/docs/how-to/quickstart).** It gives your MacBook a fixed IP and DNS name (`your-machine.tailnet-name.ts.net`) that works everywhere — same Wi-Fi, phone hotspot, coffee shop, or across the globe. No port forwarding, no VPN config, just install and it works.
-
-```bash
-brew install tailscale     # install
-tailscale login            # authenticate (opens browser)
-tailscale ip -4            # get your stable IP
-# → https://100.x.x.x:7777 from any device on your tailnet
-```
-
-Install Tailscale on your phone too ([iOS](https://apps.apple.com/app/tailscale/id1470499037) / [Android](https://play.google.com/store/apps/details?id=com.tailscale.ipn)) and log in with the same account.
-
-With Tailscale, you can bookmark `https://100.x.x.x:7777` on your phone and it always connects — whether you're on the same network or not.
-
-### Without Tailscale
-
-If your phone and MacBook are on the same network (Wi-Fi or phone hotspot), you can connect via your Mac's local IP. Note that this IP changes across networks.
-
-**Phone hotspot trick:** Connect your MacBook to your phone's hotspot, close the lid, put it in your bag — open `https://localhost:7777` on your phone's browser. Terminal on the go.
 
 ## Commands
 
