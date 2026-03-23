@@ -4,10 +4,15 @@ Lists tmux windows and provides shared web terminal access via ttyd.
 Zero dependencies — stdlib only.
 """
 
+import argparse
+import http.client
 import http.server
 import json
 import os
+import select
 import signal
+import socket
+import ssl
 import subprocess
 import sys
 import threading
@@ -18,13 +23,66 @@ from urllib.parse import urlparse
 PORT = 7777
 TTYD_BASE_PORT = 7781
 TTYD_BIN = "/opt/homebrew/bin/ttyd"
+TAILSCALE_BIN = "/opt/homebrew/bin/tailscale"
 TMUX_BIN = "/opt/homebrew/bin/tmux"
 TMUX_SESSION = "remotty"
 WEB_DIR = Path(__file__).parent / "web"
+CERT_DIR = Path(__file__).parent / ".certs"
+USE_HTTPS = False
 
 # Track ttyd processes: {window_index: {"proc": Popen, "port": int, "last_access": float}}
 ttyd_procs = {}
 ttyd_lock = threading.Lock()
+
+
+def ensure_certs():
+    """Get TLS certificate. Tries mkcert (locally trusted), falls back to self-signed."""
+    CERT_DIR.mkdir(exist_ok=True)
+    cert_file = CERT_DIR / "cert.pem"
+    key_file = CERT_DIR / "key.pem"
+
+    if cert_file.exists() and key_file.exists():
+        return str(cert_file), str(key_file)
+
+    # Try mkcert (generates certs trusted by local browsers)
+    mkcert_bin = None
+    for p in ("/opt/homebrew/bin/mkcert", "/usr/local/bin/mkcert"):
+        if os.path.isfile(p):
+            mkcert_bin = p
+            break
+
+    if mkcert_bin:
+        # Get Tailscale IP for SAN
+        names = ["localhost", "127.0.0.1"]
+        try:
+            ts_ip = subprocess.run(
+                [TAILSCALE_BIN, "ip", "-4"], capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+            if ts_ip:
+                names.append(ts_ip)
+        except Exception:
+            pass
+
+        res = subprocess.run(
+            [mkcert_bin, "-cert-file", str(cert_file), "-key-file", str(key_file)] + names,
+            capture_output=True, text=True, timeout=10,
+        )
+        if res.returncode == 0 and cert_file.exists():
+            print(f"mkcert cert ready for {', '.join(names)}")
+            return str(cert_file), str(key_file)
+
+    # Fallback: self-signed
+    print("Generating self-signed certificate (browser warning expected)...")
+    subprocess.run(
+        [
+            "openssl", "req", "-x509", "-newkey", "rsa:2048",
+            "-keyout", str(key_file), "-out", str(cert_file),
+            "-days", "365", "-nodes",
+            "-subj", "/CN=remotty",
+        ],
+        capture_output=True, check=True,
+    )
+    return str(cert_file), str(key_file)
 
 
 def get_sessions():
@@ -87,15 +145,19 @@ def start_ttyd(window_index):
 
         port = TTYD_BASE_PORT + window_index
         try:
+            base_path = f"/ttyd/{window_index}/"
+            cmd = [
+                TTYD_BIN,
+                "-p", str(port),
+                "-W",
+                "-i", "127.0.0.1",
+                "-b", base_path,
+                "-t", "fontSize=14",
+                "-t", "fontFamily=monospace",
+                TMUX_BIN, "attach", "-t", f"{TMUX_SESSION}:{window_index}",
+            ]
             proc = subprocess.Popen(
-                [
-                    TTYD_BIN,
-                    "-p", str(port),
-                    "-W",
-                    "-t", "fontSize=14",
-                    "-t", "fontFamily=monospace",
-                    TMUX_BIN, "attach", "-t", f"{TMUX_SESSION}:{window_index}",
-                ],
+                cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -254,6 +316,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json_response(get_sessions())
         elif path.startswith("/api/terminal/"):
             self._handle_terminal(path)
+        elif path == "/ca.pem":
+            self._serve_ca_cert()
+        elif parsed.path.startswith("/ttyd/"):
+            self._proxy_ttyd()
         else:
             self.send_error(404)
 
@@ -366,8 +432,164 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(500, "Failed to start terminal")
             return
 
-        host = self.headers.get("Host", "localhost").split(":")[0]
-        self._json_response({"port": port, "url": f"http://{host}:{port}", "window": window_index})
+        self._json_response({"port": port, "url": f"/ttyd/{window_index}/", "window": window_index})
+
+    def _serve_ca_cert(self):
+        """Serve mkcert CA cert for mobile device installation."""
+        try:
+            result = subprocess.run(
+                ["/opt/homebrew/bin/mkcert", "-CAROOT"],
+                capture_output=True, text=True, timeout=5,
+            )
+            ca_path = Path(result.stdout.strip()) / "rootCA.pem"
+            if ca_path.exists():
+                content = ca_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-pem-file")
+                self.send_header("Content-Disposition", "attachment; filename=remotty-ca.pem")
+                self.send_header("Content-Length", len(content))
+                self.end_headers()
+                self._write(content)
+                return
+        except Exception:
+            pass
+        self.send_error(404)
+
+    def _proxy_ttyd(self):
+        """Reverse-proxy HTTP and WebSocket requests to local ttyd."""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        # /ttyd/{idx}/... -> extract window index
+        parts = path.split("/")
+        try:
+            window_index = int(parts[2])
+        except (IndexError, ValueError):
+            self.send_error(400)
+            return
+
+        port = start_ttyd(window_index)
+        if port is None:
+            self.send_error(502)
+            return
+
+        target = path
+        if parsed.query:
+            target += "?" + parsed.query
+
+        # WebSocket upgrade
+        if self.headers.get("Upgrade", "").lower() == "websocket":
+            self._proxy_websocket(port, target)
+            return
+
+        # HTTP reverse proxy
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            conn.request("GET", target)
+            resp = conn.getresponse()
+            body = resp.read()
+            self.send_response(resp.status)
+            for key, val in resp.getheaders():
+                if key.lower() not in ("transfer-encoding", "connection"):
+                    self.send_header(key, val)
+            self.send_header("Content-Length", len(body))
+            self.end_headers()
+            self._write(body)
+            conn.close()
+        except ConnectionRefusedError:
+            # ttyd may not be ready yet, retry once
+            time.sleep(0.5)
+            try:
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+                conn.request("GET", target)
+                resp = conn.getresponse()
+                body = resp.read()
+                self.send_response(resp.status)
+                for key, val in resp.getheaders():
+                    if key.lower() not in ("transfer-encoding", "connection"):
+                        self.send_header(key, val)
+                self.send_header("Content-Length", len(body))
+                self.end_headers()
+                self._write(body)
+                conn.close()
+            except Exception:
+                self.send_error(502)
+        except Exception:
+            self.send_error(502)
+
+    def _proxy_websocket(self, port, path):
+        """Proxy WebSocket connection to local ttyd."""
+        # Connect to backend ttyd
+        for attempt in range(3):
+            try:
+                backend = socket.create_connection(("127.0.0.1", port), timeout=5)
+                break
+            except ConnectionRefusedError:
+                if attempt < 2:
+                    time.sleep(0.5)
+                else:
+                    self.send_error(502)
+                    return
+
+        # Forward the upgrade request to backend
+        lines = [f"GET {path} HTTP/1.1", f"Host: 127.0.0.1:{port}"]
+        for key, val in self.headers.items():
+            if key.lower() != "host":
+                lines.append(f"{key}: {val}")
+        lines.extend(["", ""])
+        backend.sendall("\r\n".join(lines).encode())
+
+        # Read upgrade response from backend
+        response = b""
+        while b"\r\n\r\n" not in response:
+            chunk = backend.recv(4096)
+            if not chunk:
+                backend.close()
+                self.send_error(502)
+                return
+            response += chunk
+
+        # Forward upgrade response to client
+        try:
+            self.request.sendall(response)
+        except Exception:
+            backend.close()
+            return
+
+        # Check for extra data after headers
+        header_end = response.index(b"\r\n\r\n") + 4
+        extra = response[header_end:]
+        if extra:
+            try:
+                self.request.sendall(extra)
+            except Exception:
+                backend.close()
+                return
+
+        # Bidirectional relay with threads
+        closed = threading.Event()
+
+        def relay(src, dst):
+            try:
+                while not closed.is_set():
+                    data = src.recv(65536)
+                    if not data:
+                        break
+                    dst.sendall(data)
+            except Exception:
+                pass
+            finally:
+                closed.set()
+
+        t1 = threading.Thread(target=relay, args=(self.request, backend), daemon=True)
+        t2 = threading.Thread(target=relay, args=(backend, self.request), daemon=True)
+        t1.start()
+        t2.start()
+
+        closed.wait()
+        try:
+            backend.close()
+        except Exception:
+            pass
 
     def _write(self, data):
         try:
@@ -380,18 +602,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 def main():
+    global USE_HTTPS
+
+    parser = argparse.ArgumentParser(description="remotty: web terminal dashboard")
+    parser.add_argument("--https", action="store_true", help="Enable HTTPS with self-signed certificate")
+    args = parser.parse_args()
+
+    USE_HTTPS = args.https
+
     reaper = threading.Thread(target=ttyd_reaper, daemon=True)
     reaper.start()
 
-    server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"remotty running on http://0.0.0.0:{PORT}")
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+
+    if USE_HTTPS:
+        cert, key = ensure_certs()
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(cert, key)
+        server.socket = ctx.wrap_socket(server.socket, server_side=True)
+        scheme = "https"
+    else:
+        scheme = "http"
+
+    print(f"remotty running on {scheme}://0.0.0.0:{PORT}")
 
     try:
         ts_ip = subprocess.run(
-            ["tailscale", "ip", "-4"], capture_output=True, text=True
+            [TAILSCALE_BIN, "ip", "-4"], capture_output=True, text=True
         ).stdout.strip()
         if ts_ip:
-            print(f"Mobile access: http://{ts_ip}:{PORT}")
+            print(f"Mobile access: {scheme}://{ts_ip}:{PORT}")
     except Exception:
         pass
 

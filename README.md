@@ -48,7 +48,11 @@ brew install tmux ttyd    # one-time
 make install              # done
 ```
 
-Open `http://localhost:7777`
+Open `http://localhost:7777` — or with HTTPS:
+
+```bash
+./server.py --https        # voice input requires HTTPS
+```
 
 ## Features
 
@@ -56,9 +60,12 @@ Open `http://localhost:7777`
 - **Multiple windows** — run Claude Code in one window, your shell in another. Switch from the dashboard
 - **Create from web** — tap `+` to spawn a new terminal window from your browser
 - **Touch controls** — arrow keys, Enter, Ctrl+C, all the keys you need on mobile
+- **Voice input** — tap the mic button and speak. Uses Web Speech API (requires HTTPS)
+- **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
+- **HTTPS support** — `./server.py --https` with auto-generated certs (mkcert or self-signed)
 - **Auto-cleanup** — close the terminal, sessions clean up automatically
 - **Auto-start** — server starts on login, restarts on crash (launchd)
-- **Tailscale ready** — access from anywhere via `http://<tailscale-ip>:7777`
+- **Tailscale ready** — access from anywhere via `https://<tailscale-ip>:7777`
 
 ## Terminal setup
 
@@ -88,10 +95,10 @@ fi
 ```bash
 tailscale set --ssh
 tailscale ip -4            # get your IP
-# → http://100.x.x.x:7777 from any device
+# → https://100.x.x.x:7777 from any device
 ```
 
-Perfect for checking on long-running agent sessions from your couch.
+Perfect for checking on long-running agent sessions from your couch. Voice input works over Tailscale too — just use `--https`.
 
 ## Commands
 
@@ -107,13 +114,13 @@ Perfect for checking on long-running agent sessions from your couch.
 ## Stack
 
 ```
-server.py .... 300 lines, Python stdlib
+server.py .... Python stdlib (HTTP server + ttyd reverse proxy)
 index.html ... session list
-terminal.html  web terminal + touch controls
+terminal.html  web terminal + touch/voice controls
 style.css .... dashboard styles
 terminal.css . terminal styles
 app.js ....... dashboard logic
-terminal.js .. terminal logic
+terminal.js .. terminal + voice recognition logic
 ```
 
 No React. No Next.js. No Docker. No node_modules.

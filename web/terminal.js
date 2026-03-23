@@ -151,6 +151,99 @@ scrollOverlay.addEventListener("wheel", (e) => {
 });
 
 
+// Voice recognition
+const micBtn = document.getElementById("btn-mic");
+const voiceStatus = document.getElementById("voice-status");
+const voiceText = document.getElementById("voice-text");
+const voiceSend = document.getElementById("voice-send");
+const voiceCancel = document.getElementById("voice-cancel");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+
+function startVoice() {
+  if (!SpeechRecognition) {
+    alert("This browser does not support speech recognition.");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = true;
+  recognition.continuous = true;
+
+  isRecording = true;
+  micBtn.classList.add("recording");
+  voiceStatus.classList.remove("voice-hidden");
+  voiceText.textContent = "";
+
+  recognition.onresult = (event) => {
+    let interim = "";
+    let final = "";
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        final += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    voiceText.textContent = final || interim;
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error !== "aborted") {
+      console.error("Speech recognition error:", event.error);
+    }
+    stopVoice();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // Auto-stopped by browser, keep UI state
+      isRecording = false;
+      micBtn.classList.remove("recording");
+    }
+  };
+
+  recognition.start();
+}
+
+function stopVoice() {
+  if (recognition) {
+    recognition.abort();
+    recognition = null;
+  }
+  isRecording = false;
+  micBtn.classList.remove("recording");
+}
+
+function sendVoiceText() {
+  const text = voiceText.textContent.trim();
+  stopVoice();
+  voiceStatus.classList.add("voice-hidden");
+  if (text) {
+    sendText(text);
+  }
+}
+
+function cancelVoice() {
+  stopVoice();
+  voiceStatus.classList.add("voice-hidden");
+  voiceText.textContent = "";
+}
+
+addTouchClick("btn-mic", () => {
+  if (isRecording) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+});
+
+addTouchClick("voice-send", sendVoiceText);
+addTouchClick("voice-cancel", cancelVoice);
+
 // Resize handle for wide layout
 const handle = document.getElementById("resize-handle");
 const controls = document.getElementById("controls");

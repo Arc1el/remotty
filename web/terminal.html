@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=21">
+  <link rel="stylesheet" href="/terminal.css?v=22">
 </head>
 <body>
   <div id="terminal-wrap">
@@ -27,7 +27,13 @@
       <div id="quick-keys">
         <button class="key-btn quick" id="btn-claude">claude</button>
         <button class="key-btn quick" id="btn-exit">exit</button>
+        <button class="key-btn quick" id="btn-mic">&#127908; Mic</button>
         <button class="key-btn quick" id="btn-back">Sessions</button>
+      </div>
+      <div id="voice-status" class="voice-hidden">
+        <span id="voice-text"></span>
+        <button id="voice-send" class="key-btn quick">Send</button>
+        <button id="voice-cancel" class="key-btn quick">&#10005;</button>
       </div>
       <div id="dpad-and-action">
         <div id="dpad">
