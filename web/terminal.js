@@ -82,15 +82,18 @@ async function loadTerminal() {
   const data = await res.json();
   const frame = document.getElementById("term-frame");
   frame.src = data.url;
-  // Remove ttyd's beforeunload handler
   frame.addEventListener("load", () => {
     try {
       const w = frame.contentWindow;
+      // Suppress "leave site?" dialog
       w.onbeforeunload = null;
       w.addEventListener("beforeunload", (e) => {
         e.stopImmediatePropagation();
       }, true);
       setTimeout(() => { w.onbeforeunload = null; }, 2000);
+      // Prevent mobile keyboard from auto-appearing
+      w.document.activeElement?.blur();
+      setTimeout(() => { w.document.activeElement?.blur(); }, 500);
     } catch (e) {}
   });
 }
@@ -413,6 +416,7 @@ if (localStorage.getItem("controls-side") === "left") {
 window.addEventListener("beforeunload", (e) => {
   e.stopImmediatePropagation();
 }, true);
+
 
 loadTerminal();
 loadSessions();

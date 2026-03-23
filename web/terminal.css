@@ -145,15 +145,11 @@ html {
   background: #181825;
 }
 
-/* Floating mic button */
+/* Mic button — inline in narrow, fixed in wide */
 #mic-fab {
-  position: fixed;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  right: 12px;
-  z-index: 100;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+  flex-shrink: 0;
+  width: 67px;
+  border-radius: 10px;
   border: 1px solid #45475a;
   background: #313244;
   color: #cdd6f4;
@@ -162,10 +158,9 @@ html {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  gap: 1px;
+  gap: 2px;
 }
 
 #mic-lang {
@@ -325,7 +320,7 @@ html {
 #dpad-and-action {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: stretch;
 }
 
 /* D-pad: cross layout */
@@ -585,5 +580,29 @@ html {
 
   body.resizing #term-frame {
     pointer-events: none;
+  }
+
+  /* Mic button: fixed on opposite side of controls */
+  #mic-fab {
+    position: fixed;
+    bottom: 12px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Default: controls on right, mic on left */
+  #mic-fab { left: 12px; right: auto; }
+  body.controls-left #mic-fab { left: auto; right: 12px; }
+
+  #voice-bar {
+    left: 12px;
+    right: auto;
+  }
+  body.controls-left #voice-bar {
+    left: auto;
+    right: 12px;
   }
 }

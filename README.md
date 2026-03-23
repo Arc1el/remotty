@@ -17,6 +17,8 @@ Running Claude Code overnight? Kicked off a long build? Left Codex working on a 
 
 Check in from your phone. Scroll through the output. Type a command. All from a browser — no SSH app, no extra setup.
 
+**Pack your MacBook in your bag, connect your phone's hotspot, and keep working from the bus.** As long as your phone and MacBook share a network, your terminal is in your pocket.
+
 ## Why remotty?
 
 Claude Code, Codex, and other AI agents run long tasks in your terminal. You shouldn't have to sit in front of your Mac waiting. Remotty lets you walk away and check back from any device.
@@ -32,7 +34,7 @@ Claude Code, Codex, and other AI agents run long tasks in your terminal. You sho
 ## How it works
 
 ```
-Terminal → tmux → ttyd → Browser
+Terminal → tmux → ttyd → reverse proxy → Browser
 ```
 
 1. Your terminal runs inside a tmux session called `remotty`
@@ -48,19 +50,24 @@ brew install tmux ttyd    # one-time
 make install              # done
 ```
 
-Open `https://localhost:7777` (runs with `--https` by default via `make install`)
+Open `https://localhost:7777` (HTTPS by default via `make install`)
 
 ## Features
 
 - **Session sharing** — web and terminal share the same session. Type in one, see it in the other
 - **Multiple windows** — run Claude Code in one window, your shell in another. Switch from the dashboard
+- **Session switcher** — tab bar at the top of terminal view. Switch sessions without going back to the dashboard
+- **Session rename** — long-press a tab (terminal) or tap the edit icon (dashboard) to rename
 - **Create from web** — tap `+` to spawn a new terminal window from your browser
 - **Touch controls** — arrow keys, Enter, Ctrl+C, all the keys you need on mobile
+- **Voice input** — tap the mic button to dictate commands. Long-press to switch between EN/한국어
 - **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
-- **HTTPS support** — `./server.py --https` for secure context (self-signed cert)
-- **Auto-cleanup** — close the terminal, sessions clean up automatically
+- **HTTPS** — self-signed cert auto-generated on first run. Secure context for modern browser APIs
+- **Reverse proxy** — ttyd served through the main server. Single port, single cert, no mixed content
+- **Auto-cleanup** — idle terminal backends are reaped automatically
 - **Auto-start** — server starts on login, restarts on crash (launchd)
-- **Tailscale ready** — access from anywhere via `https://<tailscale-ip>:7777`
+- **Tailscale ready** — access from anywhere on your tailnet
+- **Hotspot ready** — MacBook in your bag + phone hotspot = terminal on the go
 
 ## Terminal setup
 
@@ -93,15 +100,18 @@ Your browser will show a security warning on first visit — tap "Advanced" → 
 
 **Why the warning is fine:** The certificate is self-signed (not verified by a CA), but the connection is still fully encrypted. Since you own both the server and the client, there's no real security concern — this is standard for local/private servers.
 
-## Remote access via Tailscale
+## Remote access
+
+### Via Tailscale
 
 ```bash
-tailscale set --ssh
 tailscale ip -4            # get your IP
-# → https://100.x.x.x:7777 from any device
+# → https://100.x.x.x:7777 from any device on your tailnet
 ```
 
-Perfect for checking on long-running agent sessions from your couch.
+### Via phone hotspot
+
+Connect your MacBook to your phone's hotspot (Wi-Fi or USB). Both devices are on the same local network — open `https://localhost:7777` on your phone's browser. Your MacBook can stay closed in your bag while you monitor and control your terminal sessions on the move.
 
 ## Commands
 
@@ -117,13 +127,13 @@ Perfect for checking on long-running agent sessions from your couch.
 ## Stack
 
 ```
-server.py .... 300 lines, Python stdlib
-index.html ... session list
-terminal.html  web terminal + touch controls
-style.css .... dashboard styles
-terminal.css . terminal styles
-app.js ....... dashboard logic
-terminal.js .. terminal logic
+server.py ........ Python stdlib (HTTPS, reverse proxy, WebSocket relay)
+index.html ....... session dashboard
+terminal.html .... web terminal + touch/voice controls
+style.css ........ dashboard styles (Catppuccin Mocha)
+terminal.css ..... terminal styles
+app.js ........... dashboard logic
+terminal.js ...... terminal + voice recognition logic
 ```
 
 No React. No Next.js. No Docker. No node_modules.
