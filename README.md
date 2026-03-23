@@ -70,6 +70,7 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
 - **Speech-to-Text (STT)** — tap the STT button, speak a command, send it to the terminal. No tiny keyboard needed. Supports EN and 한국어 — switch languages in the listening bar
 - **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
 - **Session switcher** — tab bar at the top. Switch sessions without going back to the dashboard
+- **Foldable / wide mobile** — on wider screens (Galaxy Fold, iPad, landscape), controls move to a side panel with a draggable resize handle. Terminal gets maximum screen space while controls stay accessible
 
 ### Session management
 
