@@ -15,9 +15,9 @@
 
 Running Claude Code overnight? Kicked off a long build? Left Codex working on a refactor?
 
-Check in from your phone. Scroll through the output. Type a command. All from a browser — no SSH app, no extra setup.
+Check in from your phone. Scroll through the output. **Speak a command.** All from a browser — no SSH app, no extra setup.
 
-**Pack your MacBook in your bag, connect your phone's hotspot, and keep working from the bus.** As long as your phone and MacBook share a network, your terminal is in your pocket.
+**Pack your MacBook in your bag, connect your phone's hotspot, and keep working from the bus.** Tap the STT button, say "git status", and it types it into your terminal. Your Mac can stay closed.
 
 ## Why remotty?
 
@@ -29,6 +29,7 @@ Claude Code, Codex, and other AI agents run long tasks in your terminal. You sho
 | Server | 1 file (`server.py`) | frameworks, packages, builds |
 | Dependencies | Python stdlib only | npm, pip, cargo... |
 | Web UI | 3 files (HTML+CSS+JS) | React, webpack, 200MB node_modules |
+| Mobile input | touch + voice (STT) | keyboard only |
 | Auto-start | built-in (launchd) | manual setup |
 
 ## How it works
@@ -61,20 +62,42 @@ On first visit, your browser will show a security warning — tap "Advanced" →
 
 ## Features
 
-- **Session sharing** — web and terminal share the same session. Type in one, see it in the other
-- **Multiple windows** — run Claude Code in one window, your shell in another. Switch from the dashboard
-- **Session switcher** — tab bar at the top of terminal view. Switch sessions without going back to the dashboard
-- **Session rename** — long-press a tab (terminal) or tap the edit icon (dashboard) to rename
-- **Create from web** — tap `+` to spawn a new terminal window from your browser
-- **Touch controls** — arrow keys, Enter, Ctrl+C, all the keys you need on mobile
-- **Voice input (STT)** — tap the STT button to dictate commands via Web Speech API. Switch between EN/한국어 in the listening bar. Requires HTTPS and microphone permission
+### Mobile-first controls
+
+Remotty is built for the phone in your hand, not the keyboard on your desk.
+
+- **Touch controls** — arrow keys, Enter, Ctrl+C, Escape, Tab — all the keys you need, designed for thumbs
+- **Speech-to-Text (STT)** — tap the STT button, speak a command, send it to the terminal. No tiny keyboard needed. Supports EN and 한국어 — switch languages in the listening bar
 - **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
-- **HTTPS** — self-signed cert auto-generated on first run. Secure context for modern browser APIs
+- **Session switcher** — tab bar at the top. Switch sessions without going back to the dashboard
+
+### Session management
+
+- **Session sharing** — web and terminal share the same session. Type in one, see it in the other
+- **Multiple windows** — run Claude Code in one window, your shell in another
+- **Session rename** — long-press a tab (terminal) or tap the edit icon (dashboard) to rename
+- **Create from web** — tap `+` to spawn a new terminal window
+
+### Infrastructure
+
+- **HTTPS** — self-signed cert auto-generated on first run. Required for STT and other modern browser APIs
 - **Reverse proxy** — ttyd served through the main server. Single port, single cert, no mixed content
 - **Auto-cleanup** — idle terminal backends are reaped automatically
 - **Auto-start** — server starts on login, restarts on crash (launchd)
-- **Tailscale ready** — access from anywhere on your tailnet
-- **Hotspot ready** — MacBook in your bag + phone hotspot = terminal on the go
+- **Dark / Light theme** — toggle in the dashboard header. Glassmorphism UI with backdrop blur
+
+## Voice input (STT)
+
+Tap the **STT** button in the terminal controls to start listening. A bar appears with:
+
+- Your transcribed text (live preview)
+- **Language toggle** — tap `EN` / `한` to switch between English and Korean
+- **Send** (✓) — sends the text to the terminal
+- **Cancel** (✕) — discard and close
+
+STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) — no API keys, no external services, no cost. Works in Chrome, Safari, and Edge. Requires HTTPS and microphone permission.
+
+> **Tip:** On desktop, you may need to manually allow microphone access in browser settings for self-signed cert sites.
 
 ## Terminal setup
 
@@ -106,6 +129,8 @@ fi
 Your browser will show a security warning on first visit — tap "Advanced" → "Proceed" once, and it won't ask again for that device.
 
 **Why the warning is fine:** The certificate is self-signed (not verified by a CA), but the connection is still fully encrypted. Since you own both the server and the client, there's no real security concern — this is standard for local/private servers.
+
+**Why HTTPS matters:** Speech-to-Text, microphone access, and other modern browser APIs require a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts). HTTPS provides that, even with a self-signed cert.
 
 ## Remote access via Tailscale (recommended)
 
@@ -145,10 +170,10 @@ If your phone and MacBook are on the same network (Wi-Fi or phone hotspot), you 
 server.py ........ Python stdlib (HTTPS, reverse proxy, WebSocket relay)
 index.html ....... session dashboard
 terminal.html .... web terminal + touch/voice controls
-style.css ........ dashboard styles (Catppuccin Mocha)
+style.css ........ dashboard styles (glassmorphism, dark/light)
 terminal.css ..... terminal styles
-app.js ........... dashboard logic
-terminal.js ...... terminal + voice recognition logic
+app.js ........... dashboard logic + theme toggle
+terminal.js ...... terminal + STT logic
 ```
 
 No React. No Next.js. No Docker. No node_modules.
