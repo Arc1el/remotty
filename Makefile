@@ -31,7 +31,7 @@ install:
 	@chmod +x "$(SERVER_LAUNCHER)"
 	@echo "  Created launcher at $(SERVER_LAUNCHER)"
 	@# Install launchd plist
-	@cp "$(PROJECT_DIR)/config/com.remotty.server.plist" "$(LAUNCHD_PLIST)"
+	@sed 's|__SERVER_LAUNCHER__|$(SERVER_LAUNCHER)|g' "$(PROJECT_DIR)/config/com.remotty.server.plist" > "$(LAUNCHD_PLIST)"
 	@launchctl load "$(LAUNCHD_PLIST)" 2>/dev/null || true
 	@echo "  Installed launchd service (auto-start on login)"
 	@# Add tmux-remote.conf to ~/.tmux.conf
