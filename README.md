@@ -32,6 +32,16 @@ Check in from your phone. Scroll through the output. **Speak a command.** All fr
 
 Claude Code, Codex, and other AI agents run long tasks in your terminal. You shouldn't have to sit in front of your Mac waiting. Remotty lets you walk away and check back from any device.
 
+### "What about Claude Code Remote?"
+
+Yes, Anthropic offers [Claude Code Remote](https://docs.anthropic.com/en/docs/claude-code/remote). But once you actually use it, you'll notice:
+
+- **It's unstable.** Connections drop frequently, and sessions can vanish without warning.
+- **It's not what I wanted.** OpenClaude channel updates, version changes, and other factors outside your control can shift the environment at any time — breaking your workflow when you least expect it.
+- **It's not your terminal.** Your local environment, your dotfiles, your tmux config — you want all of that as-is. On a remote container, something always feels off.
+
+Remotty opens **your own terminal on your own Mac** in a browser. No cloud service dependency, your environment stays 100% intact, and you can connect from anywhere.
+
 |  | remotty | others |
 |---|---|---|
 | Install | `make install` | Docker, Node.js, config files... |
