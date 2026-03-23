@@ -56,8 +56,10 @@ Claude Code running in window 2? Tap it. You see exactly what it sees. You can t
 ## Quick start
 
 ```bash
-brew install tmux ttyd    # one-time
-make install              # done
+brew install tmux ttyd                      # one-time
+git clone https://github.com/Arc1el/remotty.git
+cd remotty
+make install                                # done
 ```
 
 ## Open in browser
@@ -117,7 +119,7 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
   <br>
   <em>Speak a command. It types into your terminal.</em>
 </p>
-Tap the **STT** button in the terminal controls to start listening. A bar appears with:
+Tap the STT button in the terminal controls to start listening. A bar appears with:
 
 - Your transcribed text (live preview)
 - **Language toggle** — tap `EN` / `한` to switch between English and Korean
