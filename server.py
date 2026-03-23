@@ -21,8 +21,8 @@ from urllib.parse import urlparse
 
 PORT = 7777
 TTYD_BASE_PORT = 7781
-TTYD_BIN = "/opt/homebrew/bin/ttyd"
-TMUX_BIN = "/opt/homebrew/bin/tmux"
+TTYD_BIN = subprocess.run(["which", "ttyd"], capture_output=True, text=True).stdout.strip() or "ttyd"
+TMUX_BIN = subprocess.run(["which", "tmux"], capture_output=True, text=True).stdout.strip() or "tmux"
 TMUX_SESSION = "remotty"
 WEB_DIR = Path(__file__).parent / "web"
 CERT_DIR = Path(__file__).parent / ".certs"

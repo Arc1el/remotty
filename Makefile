@@ -23,20 +23,27 @@ install:
 	@mkdir -p "$(SERVER_INSTALL_DIR)" "$(HOME)/.local/bin"
 	@cp "$(PROJECT_DIR)/server.py" "$(SERVER_INSTALL_DIR)/server.py"
 	@rm -rf "$(SERVER_INSTALL_DIR)/web" && cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
+	@mkdir -p "$(SERVER_INSTALL_DIR)/config"
+	@cp "$(PROJECT_DIR)/config/tmux-remote.conf" "$(SERVER_INSTALL_DIR)/config/tmux-remote.conf"
 	@echo "  Copied server to $(SERVER_INSTALL_DIR)"
 	@# Create launcher script
 	@echo '#!/bin/bash' > "$(SERVER_LAUNCHER)"
 	@echo 'cd ~/.local/share/remotty' >> "$(SERVER_LAUNCHER)"
-	@echo 'exec /usr/bin/python3 server.py --https' >> "$(SERVER_LAUNCHER)"
+	@echo 'exec $(shell which python3) server.py --https' >> "$(SERVER_LAUNCHER)"
 	@chmod +x "$(SERVER_LAUNCHER)"
 	@echo "  Created launcher at $(SERVER_LAUNCHER)"
-	@# Install launchd plist
+	@# Ensure tmux remotty session exists
+	@tmux has-session -t remotty 2>/dev/null || tmux new-session -d -s remotty
+	@echo "  Ensured tmux session 'remotty' is running"
+	@# Install launchd plist and start server
+	@launchctl unload "$(LAUNCHD_PLIST)" 2>/dev/null || true
 	@sed 's|__SERVER_LAUNCHER__|$(SERVER_LAUNCHER)|g' "$(PROJECT_DIR)/config/com.remotty.server.plist" > "$(LAUNCHD_PLIST)"
-	@launchctl load "$(LAUNCHD_PLIST)" 2>/dev/null || true
-	@echo "  Installed launchd service (auto-start on login)"
+	@launchctl load "$(LAUNCHD_PLIST)"
+	@launchctl start com.remotty.server
+	@echo "  Installed and started server (auto-start on login)"
 	@# Add tmux-remote.conf to ~/.tmux.conf
 	@if ! grep -q 'remotty' "$(TMUX_CONFIG)" 2>/dev/null; then \
-		echo 'source-file $(REMOTE_TMUX) # remotty' >> "$(TMUX_CONFIG)"; \
+		echo 'source-file $(SERVER_INSTALL_DIR)/config/tmux-remote.conf # remotty' >> "$(TMUX_CONFIG)"; \
 		echo "  Added tmux-remote.conf to ~/.tmux.conf"; \
 	else \
 		echo "  tmux-remote.conf already in ~/.tmux.conf"; \
