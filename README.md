@@ -20,12 +20,12 @@ Check in from your phone. Scroll through the output. **Speak a command.** All fr
 **Pack your MacBook in your bag, connect your phone's hotspot, and keep working from the bus.** Tap the STT button, say "git status", and it types it into your terminal. Your Mac can stay closed.
 
 <p align="center">
-  <img src="web/narrow.png" alt="Narrow (phone)" width="240">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="web/wide.png" alt="Wide (foldable / landscape)" width="480">
+  <img src="web/wide.png" alt="Wide (foldable / landscape)" width="520">
+  &nbsp;&nbsp;
+  <img src="web/narrow.png" alt="Narrow (phone)" width="200">
 </p>
 <p align="center">
-  <em>Left: phone portrait — Right: foldable / landscape with side panel controls</em>
+  <em>Left: foldable / landscape with side panel — Right: phone portrait</em>
 </p>
 
 ## Why remotty?
