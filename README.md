@@ -141,15 +141,15 @@ Automatic. `make install` handles everything.
 1. Open **iTerm2 → Settings → Profiles**
 2. Select your profile (or create a new one)
 3. Go to the **General** tab
-4. Under **Command**, select **Custom Shell** and enter:
+4. Under **Command**, select **Command** and enter:
 
 ```
-/opt/homebrew/bin/tmux new-session -A -s remotty
+/opt/homebrew/bin/tmux -u new-session -t remotty \; new-window
 ```
 
 5. Restart iTerm2
 
-Every new tab/window will auto-attach to the `remotty` tmux session.
+Every new tab/window will create a **new tmux window** inside the `remotty` session — same behavior as Kaku.
 
 ### Any other terminal
 
