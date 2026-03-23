@@ -27,7 +27,7 @@ install:
 	@# Create launcher script
 	@echo '#!/bin/bash' > "$(SERVER_LAUNCHER)"
 	@echo 'cd ~/.local/share/remotty' >> "$(SERVER_LAUNCHER)"
-	@echo 'exec /usr/bin/python3 server.py' >> "$(SERVER_LAUNCHER)"
+	@echo 'exec /usr/bin/python3 server.py --https' >> "$(SERVER_LAUNCHER)"
 	@chmod +x "$(SERVER_LAUNCHER)"
 	@echo "  Created launcher at $(SERVER_LAUNCHER)"
 	@# Install launchd plist
