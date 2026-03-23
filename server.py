@@ -4,10 +4,13 @@ Lists tmux windows and provides shared web terminal access via ttyd.
 Zero dependencies — stdlib only.
 """
 
+import argparse
 import http.server
 import json
 import os
 import signal
+import socket
+import ssl
 import subprocess
 import sys
 import threading
@@ -21,6 +24,7 @@ TTYD_BIN = "/opt/homebrew/bin/ttyd"
 TMUX_BIN = "/opt/homebrew/bin/tmux"
 TMUX_SESSION = "remotty"
 WEB_DIR = Path(__file__).parent / "web"
+CERT_DIR = Path(__file__).parent / ".certs"
 
 # Track ttyd processes: {window_index: {"proc": Popen, "port": int, "last_access": float}}
 ttyd_procs = {}
@@ -366,6 +370,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(500, "Failed to start terminal")
             return
 
+        # Wait until ttyd is ready
+        for _ in range(20):
+            try:
+                s = socket.create_connection(("127.0.0.1", port), timeout=0.5)
+                s.close()
+                break
+            except OSError:
+                time.sleep(0.15)
+
         host = self.headers.get("Host", "localhost").split(":")[0]
         self._json_response({"port": port, "url": f"http://{host}:{port}", "window": window_index})
 
@@ -379,19 +392,47 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+def ensure_certs():
+    """Generate self-signed certificate if not present."""
+    CERT_DIR.mkdir(exist_ok=True)
+    cert_file = CERT_DIR / "cert.pem"
+    key_file = CERT_DIR / "key.pem"
+    if cert_file.exists() and key_file.exists():
+        return str(cert_file), str(key_file)
+    subprocess.run(
+        ["openssl", "req", "-x509", "-newkey", "rsa:2048",
+         "-keyout", str(key_file), "-out", str(cert_file),
+         "-days", "365", "-nodes", "-subj", "/CN=remotty"],
+        capture_output=True, check=True,
+    )
+    return str(cert_file), str(key_file)
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--https", action="store_true")
+    args = parser.parse_args()
+
     reaper = threading.Thread(target=ttyd_reaper, daemon=True)
     reaper.start()
 
-    server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"remotty running on http://0.0.0.0:{PORT}")
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+
+    if args.https:
+        cert, key = ensure_certs()
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(cert, key)
+        server.socket = ctx.wrap_socket(server.socket, server_side=True)
+
+    scheme = "https" if args.https else "http"
+    print(f"remotty running on {scheme}://0.0.0.0:{PORT}")
 
     try:
         ts_ip = subprocess.run(
             ["tailscale", "ip", "-4"], capture_output=True, text=True
         ).stdout.strip()
         if ts_ip:
-            print(f"Mobile access: http://{ts_ip}:{PORT}")
+            print(f"Mobile access: {scheme}://{ts_ip}:{PORT}")
     except Exception:
         pass
 

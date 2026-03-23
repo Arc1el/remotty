@@ -48,7 +48,7 @@ brew install tmux ttyd    # one-time
 make install              # done
 ```
 
-Open `http://localhost:7777`
+Open `https://localhost:7777` (runs with `--https` by default via `make install`)
 
 ## Features
 
@@ -56,9 +56,11 @@ Open `http://localhost:7777`
 - **Multiple windows** — run Claude Code in one window, your shell in another. Switch from the dashboard
 - **Create from web** — tap `+` to spawn a new terminal window from your browser
 - **Touch controls** — arrow keys, Enter, Ctrl+C, all the keys you need on mobile
+- **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
+- **HTTPS support** — `./server.py --https` for secure context (self-signed cert)
 - **Auto-cleanup** — close the terminal, sessions clean up automatically
 - **Auto-start** — server starts on login, restarts on crash (launchd)
-- **Tailscale ready** — access from anywhere via `http://<tailscale-ip>:7777`
+- **Tailscale ready** — access from anywhere via `https://<tailscale-ip>:7777`
 
 ## Terminal setup
 
@@ -83,12 +85,20 @@ if [ -z "$TMUX" ]; then
 fi
 ```
 
+## HTTPS
+
+`make install` sets up the server with HTTPS by default (`--https` flag). A self-signed certificate is auto-generated on first run in `.certs/`.
+
+Your browser will show a security warning on first visit — tap "Advanced" → "Proceed" once, and it won't ask again for that device.
+
+**Why the warning is fine:** The certificate is self-signed (not verified by a CA), but the connection is still fully encrypted. Since you own both the server and the client, there's no real security concern — this is standard for local/private servers.
+
 ## Remote access via Tailscale
 
 ```bash
 tailscale set --ssh
 tailscale ip -4            # get your IP
-# → http://100.x.x.x:7777 from any device
+# → https://100.x.x.x:7777 from any device
 ```
 
 Perfect for checking on long-running agent sessions from your couch.
