@@ -21,8 +21,16 @@ from urllib.parse import urlparse
 
 PORT = 7777
 TTYD_BASE_PORT = 7781
-TTYD_BIN = subprocess.run(["which", "ttyd"], capture_output=True, text=True).stdout.strip() or "ttyd"
-TMUX_BIN = subprocess.run(["which", "tmux"], capture_output=True, text=True).stdout.strip() or "tmux"
+def _find_bin(name):
+    """Find binary path, checking common Homebrew locations when PATH is minimal (e.g. launchd)."""
+    for d in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]:
+        p = f"{d}/{name}"
+        if os.path.isfile(p):
+            return p
+    return name
+
+TTYD_BIN = _find_bin("ttyd")
+TMUX_BIN = _find_bin("tmux")
 TMUX_SESSION = "remotty"
 WEB_DIR = Path(__file__).parent / "web"
 CERT_DIR = Path(__file__).parent / ".certs"
