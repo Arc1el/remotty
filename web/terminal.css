@@ -89,64 +89,6 @@ html {
   background: #161b22;
 }
 
-/* Voice recognition */
-#btn-mic.recording {
-  background: #da3633;
-  border-color: #f85149;
-  color: #fff;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-#voice-status {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  background: #1c2333;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 4px 8px;
-  min-height: 30px;
-}
-
-#voice-status.voice-hidden {
-  display: none;
-}
-
-#voice-text {
-  flex: 1;
-  font-size: 12px;
-  color: #e6edf3;
-  font-family: 'SF Mono', 'Menlo', monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#voice-text:empty::before {
-  content: "Listening...";
-  color: #8b949e;
-}
-
-#voice-send {
-  flex: none;
-  width: 50px;
-  background: #238636;
-  border-color: #2ea043;
-  color: #fff;
-}
-
-#voice-cancel {
-  flex: none;
-  width: 30px;
-  background: #21262d;
-  color: #f85149;
-}
-
 /* Resize handle (hidden on narrow screens) */
 #resize-handle {
   display: none;
