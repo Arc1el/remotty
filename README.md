@@ -56,16 +56,10 @@ Claude Code running in window 2? Tap it. You see exactly what it sees. You can t
 ## Quick start
 
 ```bash
-brew install tmux ttyd                        # one-time
+brew install tmux ttyd                      # one-time
 git clone https://github.com/Arc1el/remotty.git
 cd remotty
-make install                                  # auto-detects Kaku
-```
-
-**iTerm / other terminals:**
-
-```bash
-make install TERMINAL=iterm                   # adds tmux auto-attach to ~/.zshrc
+make install                                # done
 ```
 
 ## Open in browser
@@ -138,13 +132,19 @@ STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/e
 
 ## Terminal setup
 
-| Terminal | Command |
-|---|---|
-| Kaku | `make install` (auto-detected) |
-| iTerm / Terminal.app / Alacritty | `make install TERMINAL=iterm` |
-| Manual | Add `tmux new-session -A -s remotty` to your shell rc |
+### Kaku
 
-`TERMINAL=iterm` adds the following to `~/.zshrc`:
+Automatic. `make install` handles everything.
+
+### Any other terminal
+
+Connect to the `remotty` tmux session:
+
+```bash
+tmux new-session -A -s remotty
+```
+
+Auto-attach on terminal start (`~/.zshrc`):
 
 ```bash
 # remotty: auto-attach tmux session
