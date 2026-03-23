@@ -5,6 +5,7 @@ Zero dependencies — stdlib only.
 """
 
 import argparse
+import http.client
 import http.server
 import json
 import os
@@ -96,6 +97,8 @@ def start_ttyd(window_index):
                     TTYD_BIN,
                     "-p", str(port),
                     "-W",
+                    "-i", "127.0.0.1",
+                    "-b", f"/ttyd/{window_index}/",
                     "-t", "fontSize=14",
                     "-t", "fontFamily=monospace",
                     TMUX_BIN, "attach", "-t", f"{TMUX_SESSION}:{window_index}",
@@ -258,6 +261,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json_response(get_sessions())
         elif path.startswith("/api/terminal/"):
             self._handle_terminal(path)
+        elif parsed.path.startswith("/ttyd/"):
+            self._proxy_ttyd()
         else:
             self.send_error(404)
 
@@ -405,8 +410,122 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except OSError:
                 time.sleep(0.15)
 
-        host = self.headers.get("Host", "localhost").split(":")[0]
-        self._json_response({"port": port, "url": f"http://{host}:{port}", "window": window_index})
+        self._json_response({"port": port, "url": f"/ttyd/{window_index}/", "window": window_index})
+
+    def _proxy_ttyd(self):
+        """Reverse-proxy HTTP and WebSocket requests to local ttyd."""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        parts = path.split("/")
+        try:
+            window_index = int(parts[2])
+        except (IndexError, ValueError):
+            self.send_error(400)
+            return
+
+        port = start_ttyd(window_index)
+        if port is None:
+            self.send_error(502)
+            return
+
+        target = path
+        if parsed.query:
+            target += "?" + parsed.query
+
+        if self.headers.get("Upgrade", "").lower() == "websocket":
+            self._proxy_websocket(port, target)
+            return
+
+        # HTTP proxy with retry
+        for attempt in range(2):
+            try:
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+                conn.request("GET", target)
+                resp = conn.getresponse()
+                body = resp.read()
+                self.send_response(resp.status)
+                for key, val in resp.getheaders():
+                    if key.lower() not in ("transfer-encoding", "connection"):
+                        self.send_header(key, val)
+                self.send_header("Content-Length", len(body))
+                self.end_headers()
+                self._write(body)
+                conn.close()
+                return
+            except ConnectionRefusedError:
+                if attempt == 0:
+                    time.sleep(0.5)
+            except Exception:
+                break
+        self.send_error(502)
+
+    def _proxy_websocket(self, port, path):
+        """Proxy WebSocket connection to local ttyd."""
+        for attempt in range(3):
+            try:
+                backend = socket.create_connection(("127.0.0.1", port), timeout=5)
+                break
+            except ConnectionRefusedError:
+                if attempt < 2:
+                    time.sleep(0.5)
+                else:
+                    self.send_error(502)
+                    return
+
+        lines = [f"GET {path} HTTP/1.1", f"Host: 127.0.0.1:{port}"]
+        for key, val in self.headers.items():
+            if key.lower() != "host":
+                lines.append(f"{key}: {val}")
+        lines.extend(["", ""])
+        backend.sendall("\r\n".join(lines).encode())
+
+        response = b""
+        while b"\r\n\r\n" not in response:
+            chunk = backend.recv(4096)
+            if not chunk:
+                backend.close()
+                self.send_error(502)
+                return
+            response += chunk
+
+        try:
+            self.request.sendall(response)
+        except Exception:
+            backend.close()
+            return
+
+        header_end = response.index(b"\r\n\r\n") + 4
+        extra = response[header_end:]
+        if extra:
+            try:
+                self.request.sendall(extra)
+            except Exception:
+                backend.close()
+                return
+
+        closed = threading.Event()
+
+        def relay(src, dst):
+            try:
+                while not closed.is_set():
+                    data = src.recv(65536)
+                    if not data:
+                        break
+                    dst.sendall(data)
+            except Exception:
+                pass
+            finally:
+                closed.set()
+
+        t1 = threading.Thread(target=relay, args=(self.request, backend), daemon=True)
+        t2 = threading.Thread(target=relay, args=(backend, self.request), daemon=True)
+        t1.start()
+        t2.start()
+        closed.wait()
+        try:
+            backend.close()
+        except Exception:
+            pass
 
     def _write(self, data):
         try:

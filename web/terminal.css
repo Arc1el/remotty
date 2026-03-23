@@ -1,9 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: #0d1117;
-  color: #e6edf3;
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  font-family: 'SF Mono', 'Menlo', 'Cascadia Code', 'JetBrains Mono', monospace;
   height: 100dvh;
   height: 100vh;
   display: flex;
@@ -26,8 +26,8 @@ html {
 /* Session switcher bar */
 #session-bar {
   display: flex;
-  background: #161b22;
-  border-bottom: 1px solid #21262d;
+  background: #181825;
+  border-bottom: 1px solid #313244;
   overflow-x: auto;
   flex-shrink: 0;
   -webkit-overflow-scrolling: touch;
@@ -41,32 +41,33 @@ html {
 
 .session-tab {
   flex-shrink: 0;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-family: 'SF Mono', 'Menlo', monospace;
-  color: #8b949e;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #6c7086;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
 }
 
 .session-tab.active {
-  color: #e6edf3;
-  border-bottom-color: #388bfd;
+  color: #cdd6f4;
+  border-bottom-color: #89b4fa;
 }
 
 .session-tab:active {
-  color: #e6edf3;
+  color: #cdd6f4;
 }
 
 #session-bar-hint {
   flex-shrink: 0;
-  padding: 6px 10px;
-  font-size: 10px;
-  color: #484f58;
+  padding: 8px 12px;
+  font-size: 9px;
+  color: #45475a;
   align-self: center;
   white-space: nowrap;
 }
@@ -86,13 +87,14 @@ html {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  position: relative;
 }
 
 #term-frame {
   width: 100%;
   height: 100%;
   border: none;
-  background: #000;
+  background: #11111b;
   touch-action: auto;
   overscroll-behavior: contain;
 }
@@ -105,7 +107,7 @@ html {
   z-index: 10;
   touch-action: none;
   background: transparent;
-  border: 2px solid #388bfd;
+  border: 2px solid #89b4fa;
 }
 
 #scroll-overlay.active {
@@ -113,20 +115,16 @@ html {
 }
 
 #scroll-toggle.active {
-  background: #388bfd;
-  border-color: #58a6ff;
-  color: #fff;
-}
-
-#terminal-wrap {
-  position: relative;
+  background: #89b4fa;
+  border-color: #89b4fa;
+  color: #1e1e2e;
 }
 
 .scroll-btn {
   height: 44px;
-  background: #21262d;
-  border: 1px solid #30363d;
-  color: #8b949e;
+  background: #313244;
+  border: 1px solid #45475a;
+  color: #6c7086;
   font-size: 12px;
   cursor: pointer;
   display: flex;
@@ -137,14 +135,14 @@ html {
 }
 
 .scroll-btn:active {
-  background: #388bfd;
-  color: #fff;
+  background: #89b4fa;
+  color: #1e1e2e;
 }
 
 #scroll-track {
   flex: 1;
   touch-action: none;
-  background: #161b22;
+  background: #181825;
 }
 
 /* Resize handle (hidden on narrow screens) */
@@ -154,8 +152,8 @@ html {
 
 /* Controls panel */
 #controls {
-  background: #161b22;
-  border-top: 1px solid #21262d;
+  background: #181825;
+  border-top: 1px solid #313244;
   padding: 6px 8px;
   padding-bottom: max(6px, env(safe-area-inset-bottom));
   flex-shrink: 0;
@@ -191,15 +189,15 @@ html {
 .key-btn.quick {
   height: 30px;
   font-size: 11px;
-  font-family: 'SF Mono', 'Menlo', monospace;
-  background: #1c2333;
-  border-color: #388bfd;
-  color: #58a6ff;
+  font-family: inherit;
+  background: #1e1e2e;
+  border-color: #89b4fa;
+  color: #89b4fa;
 }
 
 .key-btn.quick:active {
-  background: #388bfd;
-  color: #fff;
+  background: #89b4fa;
+  color: #1e1e2e;
 }
 
 /* D-pad + action keys row */
@@ -242,24 +240,23 @@ html {
 
 /* Button base */
 .key-btn {
-  background: #21262d;
-  border: 1px solid #30363d;
-  color: #c9d1d9;
-  border-radius: 6px;
+  background: #313244;
+  border: 1px solid #45475a;
+  color: #bac2de;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.1s, transform 0.05s;
+  transition: background 0.1s;
 }
 
 .key-btn:active {
-  background: #388bfd;
-  border-color: #58a6ff;
-  color: #fff;
-  transform: scale(0.95);
+  background: #89b4fa;
+  border-color: #89b4fa;
+  color: #1e1e2e;
 }
 
 /* Arrow buttons */
@@ -273,41 +270,41 @@ html {
 /* Enter button */
 .key-btn.enter {
   height: 34px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  background: #238636;
-  border-color: #2ea043;
-  color: #fff;
+  background: #a6e3a1;
+  border-color: #a6e3a1;
+  color: #1e1e2e;
 }
 
 .key-btn.enter:active {
-  background: #2ea043;
-  border-color: #3fb950;
+  background: #94e2d5;
+  border-color: #94e2d5;
 }
 
 /* Modifier keys */
 .key-btn.mod {
   height: 30px;
   font-size: 11px;
-  font-family: 'SF Mono', 'Menlo', monospace;
-  color: #8b949e;
+  font-family: inherit;
+  color: #6c7086;
 }
 
 .key-btn.mod:active {
-  color: #fff;
+  color: #1e1e2e;
 }
 
 #shift-btn.active {
-  background: #388bfd;
-  border-color: #58a6ff;
-  color: #fff;
+  background: #89b4fa;
+  border-color: #89b4fa;
+  color: #1e1e2e;
 }
 
 /* Action keys */
 .key-btn.action {
   height: 30px;
   font-size: 11px;
-  font-family: 'SF Mono', 'Menlo', monospace;
+  font-family: inherit;
 }
 
 /* Side toggle button (hidden on narrow) */
@@ -363,10 +360,10 @@ html {
     justify-content: center;
     width: 100%;
     height: 34px;
-    background: #21262d;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    color: #8b949e;
+    background: #313244;
+    border: 1px solid #45475a;
+    border-radius: 8px;
+    color: #6c7086;
     font-size: 18px;
     cursor: pointer;
     margin-bottom: 6px;
@@ -375,8 +372,8 @@ html {
   }
 
   #side-toggle:active {
-    background: #30363d;
-    color: #e6edf3;
+    background: #45475a;
+    color: #cdd6f4;
   }
 
   #terminal-wrap {
@@ -387,7 +384,7 @@ html {
   #resize-handle {
     display: block;
     width: 6px;
-    background: #21262d;
+    background: #313244;
     cursor: col-resize;
     flex-shrink: 0;
     touch-action: none;
@@ -396,7 +393,7 @@ html {
 
   #resize-handle:hover,
   #resize-handle:active {
-    background: #388bfd;
+    background: #89b4fa;
   }
 
   #controls {

@@ -1,9 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', system-ui, sans-serif;
-  background: #0d1117;
-  color: #e6edf3;
+  font-family: 'SF Mono', 'Menlo', 'Cascadia Code', 'JetBrains Mono', monospace;
+  background: #1e1e2e;
+  color: #cdd6f4;
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
 }
@@ -12,39 +12,42 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #21262d;
+  padding: 14px 20px;
+  background: #181825;
+  border-bottom: 1px solid #313244;
 }
 
 #header-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 #header-logo img {
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 h1 {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: #cba6f7;
 }
 
 #fab {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  background: #238636;
-  color: #fff;
-  font-size: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid #45475a;
+  background: #313244;
+  color: #a6e3a1;
+  font-size: 24px;
   font-weight: 300;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,15 +57,17 @@ h1 {
 }
 
 #fab:active {
-  background: #2ea043;
-  transform: scale(0.9);
+  background: #45475a;
+  transform: scale(0.92);
 }
 
 #dialog-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 20;
   align-items: center;
   justify-content: center;
@@ -73,27 +78,30 @@ h1 {
 }
 
 #dialog {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 12px;
-  padding: 20px;
-  width: 280px;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 16px;
+  padding: 24px;
+  width: 300px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
 #dialog-input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #30363d;
-  background: #0d1117;
-  color: #e6edf3;
-  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #45475a;
+  background: #181825;
+  color: #cdd6f4;
+  font-family: inherit;
+  font-size: 13px;
   outline: none;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  transition: border-color 0.15s;
 }
 
 #dialog-input:focus {
-  border-color: #388bfd;
+  border-color: #89b4fa;
 }
 
 #dialog-btns {
@@ -103,123 +111,140 @@ h1 {
 }
 
 #dialog-cancel, #dialog-ok {
-  padding: 6px 16px;
-  border-radius: 8px;
-  border: 1px solid #30363d;
-  font-size: 13px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid #45475a;
+  font-family: inherit;
+  font-size: 12px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
 }
 
 #dialog-cancel {
-  background: #21262d;
-  color: #c9d1d9;
+  background: #313244;
+  color: #bac2de;
+}
+
+#dialog-cancel:active {
+  background: #45475a;
 }
 
 #dialog-ok {
-  background: #238636;
-  border-color: #238636;
-  color: #fff;
+  background: #a6e3a1;
+  border-color: #a6e3a1;
+  color: #1e1e2e;
   font-weight: 600;
 }
 
 #dialog-ok:active {
-  background: #2ea043;
+  background: #94e2d5;
 }
 
 .status {
-  font-size: 12px;
+  font-size: 11px;
   padding: 4px 10px;
-  border-radius: 12px;
-  background: #1a7f37;
-  color: #fff;
+  border-radius: 6px;
+  background: #a6e3a1;
+  color: #1e1e2e;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .status.offline {
-  background: #6e4024;
+  background: #f38ba8;
 }
 
 main {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .session-card {
-  background: #161b22;
-  border: 1px solid #21262d;
+  background: #181825;
+  border: 1px solid #313244;
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px 16px;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   -webkit-user-select: none;
   user-select: none;
 }
 
 .session-card:active {
-  border-color: #388bfd;
+  border-color: #89b4fa;
 }
 
 .session-card:hover {
-  border-color: #388bfd;
+  border-color: #45475a;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
 .window-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
+  color: #cdd6f4;
   flex: 1;
 }
 
 .rename-btn {
   background: none;
   border: none;
-  color: #c9d1d9;
-  font-size: 18px;
+  color: #6c7086;
+  font-size: 16px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, background 0.15s;
+}
+
+.rename-btn:hover {
+  color: #cdd6f4;
+  background: #313244;
 }
 
 .rename-btn:active {
-  color: #e6edf3;
-  background: #30363d;
+  color: #cdd6f4;
+  background: #45475a;
 }
 
 .window-index {
-  font-size: 12px;
-  color: #8b949e;
-  background: #21262d;
+  font-size: 11px;
+  color: #a6adc8;
+  background: #313244;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .info-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  color: #8b949e;
+  font-size: 12px;
+  color: #6c7086;
 }
 
 .info-row .icon {
   width: 16px;
   text-align: center;
   flex-shrink: 0;
+  font-size: 11px;
 }
 
 .info-row .value {
@@ -229,19 +254,18 @@ main {
 }
 
 .branch {
-  color: #a5d6ff;
+  color: #89b4fa;
 }
 
 .command {
-  color: #7ee787;
-  font-family: 'SF Mono', 'Menlo', monospace;
+  color: #a6e3a1;
 }
 
 .empty-state {
   text-align: center;
-  color: #8b949e;
+  color: #6c7086;
   padding: 60px 20px;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .empty-state p:first-child {
