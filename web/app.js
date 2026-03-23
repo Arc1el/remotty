@@ -2,7 +2,7 @@ const sessionsEl = document.getElementById("sessions");
 const statusEl = document.getElementById("status");
 
 // Theme toggle
-const savedTheme = localStorage.getItem("theme") || "dark";
+const savedTheme = localStorage.getItem("theme") || "light";
 document.documentElement.setAttribute("data-theme", savedTheme);
 
 document.getElementById("theme-toggle").addEventListener("click", () => {

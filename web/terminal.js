@@ -1,5 +1,5 @@
 // Apply saved theme
-document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "light");
 
 const params = new URLSearchParams(location.search);
 let windowIndex = params.get("window");
