@@ -136,15 +136,24 @@ STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/e
 
 Automatic. `make install` handles everything.
 
-### Any other terminal
+### iTerm2
 
-Connect to the `remotty` tmux session:
+1. Open **iTerm2 → Settings → Profiles**
+2. Select your profile (or create a new one)
+3. Go to the **General** tab
+4. Under **Command**, select **Custom Shell** and enter:
 
-```bash
-tmux new-session -A -s remotty
+```
+/opt/homebrew/bin/tmux new-session -A -s remotty
 ```
 
-Auto-attach on terminal start (`~/.zshrc`):
+5. Restart iTerm2
+
+Every new tab/window will auto-attach to the `remotty` tmux session.
+
+### Any other terminal
+
+Add to your `~/.zshrc` (or `~/.bashrc`):
 
 ```bash
 # remotty: auto-attach tmux session
