@@ -31,9 +31,10 @@ function render(sessions) {
   }
 
   sessionsEl.innerHTML = sessions.map(s => `
-    <div class="session-card${s.is_active ? " active" : ""}" data-index="${s.index}">
+    <div class="session-card${s.is_active ? " active" : ""}" data-index="${s.index}" data-name="${esc(s.name)}">
       <div class="card-header">
         <span class="window-name">${esc(s.name)}</span>
+        <button class="rename-btn" data-index="${s.index}">&#9998;</button>
         <span class="window-index">#${s.index}${s.is_active ? " ●" : ""}</span>
       </div>
       <div class="card-body">
@@ -55,11 +56,30 @@ function render(sessions) {
   `).join("");
 
   sessionsEl.querySelectorAll(".session-card").forEach(card => {
-    card.addEventListener("click", () => {
-      const idx = card.dataset.index;
-      window.location.href = `/terminal.html?window=${idx}`;
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".rename-btn")) return;
+      window.location.href = `/terminal.html?window=${card.dataset.index}`;
     });
   });
+
+  sessionsEl.querySelectorAll(".rename-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const card = btn.closest(".session-card");
+      renameWindow(card.dataset.index, card.dataset.name);
+    });
+  });
+}
+
+async function renameWindow(idx, currentName) {
+  const name = prompt("세션 이름 변경", currentName || "");
+  if (name === null || name.trim() === "") return;
+  await fetch(`/api/rename-window/${idx}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+  fetchSessions();
 }
 
 function esc(str) {

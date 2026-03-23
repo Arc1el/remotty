@@ -23,6 +23,64 @@ html {
   body { height: 100dvh; }
 }
 
+/* Session switcher bar */
+#session-bar {
+  display: flex;
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  z-index: 20;
+}
+
+#session-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.session-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  color: #8b949e;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.session-tab.active {
+  color: #e6edf3;
+  border-bottom-color: #388bfd;
+}
+
+.session-tab:active {
+  color: #e6edf3;
+}
+
+#session-bar-hint {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: #484f58;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* Main area below session bar */
+#main-area {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 #terminal-wrap {
   flex: 1;
   min-height: 0;
@@ -259,7 +317,7 @@ html {
 
 /* Wide screen: controls on right, 1 column */
 @media (min-width: 580px) and (orientation: landscape) {
-  body {
+  #main-area {
     flex-direction: row;
   }
 

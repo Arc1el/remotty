@@ -1,8 +1,74 @@
 const params = new URLSearchParams(location.search);
-const windowIndex = params.get("window");
+let windowIndex = params.get("window");
 
 if (!windowIndex) {
   location.href = "/";
+}
+
+// Session bar
+const sessionBar = document.getElementById("session-bar");
+
+async function loadSessions() {
+  try {
+    const res = await fetch("/api/sessions");
+    const sessions = await res.json();
+    sessionBar.innerHTML = "";
+    sessions.forEach(s => {
+      const tab = document.createElement("button");
+      tab.className = "session-tab" + (s.index == windowIndex ? " active" : "");
+      tab.textContent = s.name || `window ${s.index}`;
+      tab.title = "길게 눌러서 이름 변경";
+
+      // Tap = switch, long press = rename
+      let lpTimer = null;
+      let didLP = false;
+      tab.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        didLP = false;
+        lpTimer = setTimeout(() => { didLP = true; renameSession(s.index, s.name); }, 500);
+      });
+      tab.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        clearTimeout(lpTimer);
+        if (!didLP) switchSession(s.index);
+      });
+      tab.addEventListener("touchmove", () => clearTimeout(lpTimer));
+      tab.addEventListener("mousedown", () => {
+        didLP = false;
+        lpTimer = setTimeout(() => { didLP = true; renameSession(s.index, s.name); }, 500);
+      });
+      tab.addEventListener("mouseup", () => {
+        clearTimeout(lpTimer);
+        if (!didLP) switchSession(s.index);
+      });
+
+      sessionBar.appendChild(tab);
+    });
+    // Hint
+    const hint = document.createElement("span");
+    hint.id = "session-bar-hint";
+    hint.textContent = "길게 눌러 이름 변경";
+    sessionBar.appendChild(hint);
+  } catch (e) {}
+}
+
+async function renameSession(idx, currentName) {
+  const name = prompt("세션 이름 변경", currentName || "");
+  if (name === null || name.trim() === "") return;
+  await fetch(`/api/rename-window/${idx}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+  loadSessions();
+}
+
+function switchSession(idx) {
+  if (idx == windowIndex) return;
+  windowIndex = idx;
+  history.replaceState(null, "", `?window=${idx}`);
+  loadTerminal();
+  loadSessions();
 }
 
 // Load terminal iframe
@@ -206,3 +272,4 @@ if (localStorage.getItem("controls-side") === "left") {
 }
 
 loadTerminal();
+loadSessions();

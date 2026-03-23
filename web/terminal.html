@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=21">
+  <link rel="stylesheet" href="/terminal.css?v=23">
 </head>
 <body>
-  <div id="terminal-wrap">
-    <iframe id="term-frame" allowfullscreen></iframe>
-    <div id="scroll-overlay"></div>
-  </div>
-  <div id="resize-handle"></div>
-  <div id="controls">
+  <div id="session-bar"></div>
+  <div id="main-area">
+    <div id="terminal-wrap">
+      <iframe id="term-frame" allowfullscreen></iframe>
+      <div id="scroll-overlay"></div>
+    </div>
+    <div id="resize-handle"></div>
+    <div id="controls">
     <button id="side-toggle" onclick="toggleSide()">&#8644;</button>
     <div id="main-controls">
       <div id="mod-keys">
@@ -48,6 +50,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
   <script src="/terminal.js"></script>

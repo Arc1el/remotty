@@ -273,6 +273,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._handle_send_text(path)
         elif path.startswith("/api/scroll/"):
             self._handle_scroll(path)
+        elif path.startswith("/api/rename-window/"):
+            self._handle_rename_window(path)
         else:
             self.send_error(404)
 
@@ -337,6 +339,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         ok = send_tmux_text(window_index, text)
         self._json_response({"ok": ok})
+
+    def _handle_rename_window(self, path):
+        try:
+            window_index = int(path.split("/")[-1])
+        except ValueError:
+            self.send_error(400, "Invalid window index")
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length > 0 else {}
+        name = body.get("name", "").strip()
+
+        if not name:
+            self.send_error(400, "Missing name")
+            return
+
+        try:
+            subprocess.run(
+                [TMUX_BIN, "rename-window", "-t", f"{TMUX_SESSION}:{window_index}", name],
+                capture_output=True, timeout=3,
+            )
+            self._json_response({"ok": True})
+        except Exception:
+            self._json_response({"ok": False})
 
     def _serve_file(self, filename, content_type):
         filepath = WEB_DIR / filename
@@ -417,6 +443,7 @@ def main():
     reaper.start()
 
     server = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     if args.https:
         cert, key = ensure_certs()
