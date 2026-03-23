@@ -41,16 +41,20 @@ install:
 	else \
 		echo "  tmux-remote.conf already in ~/.tmux.conf"; \
 	fi
-	@# Add loader to kaku.lua
-	@if ! grep -q 'remotty' "$(KAKU_CONFIG)" 2>/dev/null; then \
-		python3 -c "\
+	@# Add loader to kaku.lua (skip if kaku not installed)
+	@if [ -f "$(KAKU_CONFIG)" ]; then \
+		if ! grep -q 'remotty' "$(KAKU_CONFIG)" 2>/dev/null; then \
+			python3 -c "\
 f = open('$(KAKU_CONFIG)', 'r'); lines = f.read(); f.close(); \
 loader = \"\n-- remotty\nlocal _ok, _remote = pcall(dofile, '$(REMOTE_LUA)')\nif _ok and _remote and _remote.apply then _remote.apply(config) end\n\"; \
 lines = lines.replace('return config', loader + 'return config'); \
 f = open('$(KAKU_CONFIG)', 'w'); f.write(lines); f.close()"; \
-		echo "  Added remotty loader to kaku.lua"; \
+			echo "  Added remotty loader to kaku.lua"; \
+		else \
+			echo "  remotty loader already in kaku.lua"; \
+		fi; \
 	else \
-		echo "  remotty loader already in kaku.lua"; \
+		echo "  Kaku not found, skipping kaku.lua setup"; \
 	fi
 	@echo "  Done. Restart terminal to apply."
 
