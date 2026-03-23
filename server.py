@@ -208,6 +208,27 @@ def send_tmux_text(window_index, text):
         return False
 
 
+def scroll_tmux(window_index, direction):
+    """Scroll tmux pane using copy mode. direction: 'up' or 'down'."""
+    target = f"{TMUX_SESSION}:{window_index}"
+    try:
+        # Enter copy mode (no-op if already in copy mode)
+        subprocess.run(
+            [TMUX_BIN, "copy-mode", "-t", target],
+            capture_output=True, timeout=3,
+        )
+        # Scroll 5 lines at a time
+        cmd = "scroll-up" if direction == "up" else "scroll-down"
+        for _ in range(5):
+            subprocess.run(
+                [TMUX_BIN, "send-keys", "-t", target, "-X", cmd],
+                capture_output=True, timeout=3,
+            )
+        return True
+    except Exception:
+        return False
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -246,6 +267,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._handle_send_keys(path)
         elif path.startswith("/api/send-text/"):
             self._handle_send_text(path)
+        elif path.startswith("/api/scroll/"):
+            self._handle_scroll(path)
         else:
             self.send_error(404)
 
@@ -277,6 +300,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
 
         ok = send_tmux_key(window_index, key)
+        self._json_response({"ok": ok})
+
+    def _handle_scroll(self, path):
+        try:
+            window_index = int(path.split("/")[-1])
+        except ValueError:
+            self.send_error(400, "Invalid window index")
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length > 0 else {}
+        direction = body.get("direction", "up")
+
+        ok = scroll_tmux(window_index, direction)
         self._json_response({"ok": ok})
 
     def _handle_send_text(self, path):

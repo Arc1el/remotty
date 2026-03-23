@@ -9,8 +9,14 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 @supports (height: 100dvh) {
@@ -20,7 +26,7 @@ body {
 #terminal-wrap {
   flex: 1;
   min-height: 0;
-  position: relative;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -29,6 +35,58 @@ body {
   height: 100%;
   border: none;
   background: #000;
+  touch-action: auto;
+  overscroll-behavior: contain;
+}
+
+/* Scroll overlay */
+#scroll-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  touch-action: none;
+  background: transparent;
+  border: 2px solid #388bfd;
+}
+
+#scroll-overlay.active {
+  display: block;
+}
+
+#scroll-toggle.active {
+  background: #388bfd;
+  border-color: #58a6ff;
+  color: #fff;
+}
+
+#terminal-wrap {
+  position: relative;
+}
+
+.scroll-btn {
+  height: 44px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.scroll-btn:active {
+  background: #388bfd;
+  color: #fff;
+}
+
+#scroll-track {
+  flex: 1;
+  touch-action: none;
+  background: #161b22;
 }
 
 /* Resize handle (hidden on narrow screens) */

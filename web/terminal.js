@@ -30,17 +30,24 @@ function sendKey(key) {
 }
 
 // Quick commands
-document.getElementById("btn-claude").addEventListener("click", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  sendText("claude");
-});
+function addTouchClick(id, fn) {
+  const el = document.getElementById(id);
+  let touched = false;
+  el.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    touched = true;
+    fn();
+  });
+  el.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (!touched) fn();
+    touched = false;
+  });
+}
 
-document.getElementById("btn-exit").addEventListener("click", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  sendText("exit");
-});
+addTouchClick("btn-claude", () => sendText("claude"));
+addTouchClick("btn-exit", () => sendText("exit"));
+addTouchClick("btn-back", () => { location.href = "/"; });
 
 function sendText(text) {
   fetch(`/api/send-text/${windowIndex}`, {
@@ -50,27 +57,99 @@ function sendText(text) {
   });
 }
 
-// Button clicks
+// Button handler
+function handleKey(btn, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const key = btn.dataset.key;
+  if (!key) return;
+
+  if (key === "Shift") {
+    shiftActive = !shiftActive;
+    shiftBtn.classList.toggle("active", shiftActive);
+    return;
+  }
+
+  if (shiftActive) {
+    sendKey("S-" + key);
+    shiftActive = false;
+    shiftBtn.classList.remove("active");
+  } else {
+    sendKey(key);
+  }
+}
+
+// Use both touchstart and click for reliability
 document.querySelectorAll(".key-btn").forEach(btn => {
+  let touched = false;
+  btn.addEventListener("touchstart", (e) => {
+    touched = true;
+    handleKey(btn, e);
+  });
   btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    const key = btn.dataset.key;
-
-    if (key === "Shift") {
-      shiftActive = !shiftActive;
-      shiftBtn.classList.toggle("active", shiftActive);
-      return;
-    }
-
-    if (shiftActive) {
-      sendKey("S-" + key);
-      shiftActive = false;
-      shiftBtn.classList.remove("active");
-    } else {
-      sendKey(key);
-    }
+    if (!touched) handleKey(btn, e);
+    touched = false;
   });
 });
+
+// Scroll mode
+const scrollToggle = document.getElementById("scroll-toggle");
+const scrollOverlay = document.getElementById("scroll-overlay");
+let scrollMode = false;
+
+let scrollTouched = false;
+scrollToggle.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  scrollTouched = true;
+  toggleScrollMode();
+});
+scrollToggle.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (!scrollTouched) toggleScrollMode();
+  scrollTouched = false;
+});
+
+function toggleScrollMode() {
+  scrollMode = !scrollMode;
+  scrollToggle.classList.toggle("active", scrollMode);
+  scrollOverlay.classList.toggle("active", scrollMode);
+  // Exit tmux copy mode when turning off scroll
+  if (!scrollMode) {
+    sendKey("Escape");
+  }
+}
+
+// Scroll overlay: swipe to scroll tmux
+let scrollY = 0;
+scrollOverlay.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  scrollY = e.touches[0].clientY;
+});
+
+function sendScroll(direction) {
+  fetch(`/api/scroll/${windowIndex}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ direction }),
+  });
+}
+
+scrollOverlay.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  const dy = scrollY - e.touches[0].clientY;
+  const threshold = 30;
+  if (Math.abs(dy) > threshold) {
+    sendScroll(dy > 0 ? "up" : "down");
+    scrollY = e.touches[0].clientY;
+  }
+});
+
+// Mouse scroll on overlay
+scrollOverlay.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  sendScroll(e.deltaY < 0 ? "up" : "down");
+});
+
 
 // Resize handle for wide layout
 const handle = document.getElementById("resize-handle");

@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=17">
+  <link rel="stylesheet" href="/terminal.css?v=21">
 </head>
 <body>
   <div id="terminal-wrap">
     <iframe id="term-frame" allowfullscreen></iframe>
+    <div id="scroll-overlay"></div>
   </div>
   <div id="resize-handle"></div>
   <div id="controls">
@@ -21,13 +22,12 @@
         <button data-key="Shift" class="key-btn mod" id="shift-btn">Shift</button>
         <button data-key="C-c" class="key-btn mod">^C</button>
         <button data-key="C-d" class="key-btn mod">^D</button>
-        <button data-key="C-z" class="key-btn mod">^Z</button>
-        <button data-key="C-l" class="key-btn mod">^L</button>
+        <button class="key-btn mod" id="scroll-toggle">Scroll</button>
       </div>
       <div id="quick-keys">
         <button class="key-btn quick" id="btn-claude">claude</button>
         <button class="key-btn quick" id="btn-exit">exit</button>
-        <button class="key-btn quick" id="btn-back" onclick="location.href='/'">Sessions</button>
+        <button class="key-btn quick" id="btn-back">Sessions</button>
       </div>
       <div id="dpad-and-action">
         <div id="dpad">
