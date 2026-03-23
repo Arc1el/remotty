@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=25">
+  <link rel="stylesheet" href="/terminal.css?v=30">
 </head>
 <body>
   <div id="session-bar"></div>
@@ -33,6 +33,7 @@
       </div>
       <div id="dpad-and-action">
         <div id="dpad">
+          <div class="mic-slot" id="mic-wide"></div>
           <div class="dpad-row">
             <button data-key="Up" class="key-btn arrow">&#9650;</button>
           </div>
@@ -49,12 +50,14 @@
             <button data-key="Backspace" class="key-btn action">&#9003;</button>
           </div>
         </div>
-        <button id="mic-fab"><span id="mic-lang">EN</span><span id="mic-icon">&#127908;</span></button>
+        <div class="mic-slot" id="mic-narrow"></div>
       </div>
+      <button id="mic-btn">STT</button>
     </div>
     </div>
   </div>
   <div id="voice-bar" class="voice-hidden">
+    <button id="voice-lang">EN</button>
     <span id="voice-text"></span>
     <button id="voice-send">&#10003;</button>
     <button id="voice-cancel">&#10005;</button>

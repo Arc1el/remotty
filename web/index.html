@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=3">
 </head>
 <body>
   <header>
@@ -13,7 +13,10 @@
       <img src="/remotty.svg" alt="Remotty" style="width:32px;height:32px;object-fit:contain;">
       <h1>Remotty</h1>
     </div>
-    <span id="status" class="status"></span>
+    <div id="header-right">
+      <span id="status" class="status"></span>
+      <button id="theme-toggle"></button>
+    </div>
   </header>
   <main id="sessions"></main>
   <button id="fab" onclick="showNewDialog()">+</button>
@@ -26,6 +29,6 @@
       </div>
     </div>
   </div>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=2"></script>
 </body>
 </html>

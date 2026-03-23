@@ -22,7 +22,7 @@ install:
 	@# Copy server files outside Documents (macOS sandbox restriction)
 	@mkdir -p "$(SERVER_INSTALL_DIR)" "$(HOME)/.local/bin"
 	@cp "$(PROJECT_DIR)/server.py" "$(SERVER_INSTALL_DIR)/server.py"
-	@cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
+	@rm -rf "$(SERVER_INSTALL_DIR)/web" && cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
 	@echo "  Copied server to $(SERVER_INSTALL_DIR)"
 	@# Create launcher script
 	@echo '#!/bin/bash' > "$(SERVER_LAUNCHER)"
@@ -71,7 +71,7 @@ uninstall:
 
 sync:
 	@cp "$(PROJECT_DIR)/server.py" "$(SERVER_INSTALL_DIR)/server.py"
-	@cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
+	@rm -rf "$(SERVER_INSTALL_DIR)/web" && cp -r "$(PROJECT_DIR)/web" "$(SERVER_INSTALL_DIR)/web"
 	@$(MAKE) stop
 	@$(MAKE) serve
 	@echo "Synced and restarted."

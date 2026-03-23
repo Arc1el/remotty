@@ -67,7 +67,7 @@ On first visit, your browser will show a security warning — tap "Advanced" →
 - **Session rename** — long-press a tab (terminal) or tap the edit icon (dashboard) to rename
 - **Create from web** — tap `+` to spawn a new terminal window from your browser
 - **Touch controls** — arrow keys, Enter, Ctrl+C, all the keys you need on mobile
-- **Voice input** — tap the mic button to dictate commands. Long-press to switch between EN/한국어
+- **Voice input (STT)** — tap the STT button to dictate commands via Web Speech API. Switch between EN/한국어 in the listening bar. Requires HTTPS and microphone permission
 - **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
 - **HTTPS** — self-signed cert auto-generated on first run. Secure context for modern browser APIs
 - **Reverse proxy** — ttyd served through the main server. Single port, single cert, no mixed content

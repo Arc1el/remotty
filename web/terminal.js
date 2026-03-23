@@ -1,3 +1,6 @@
+// Apply saved theme
+document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+
 const params = new URLSearchParams(location.search);
 let windowIndex = params.get("window");
 
@@ -233,8 +236,8 @@ scrollOverlay.addEventListener("wheel", (e) => {
 
 
 // Voice recognition
-const micFab = document.getElementById("mic-fab");
-const micLang = document.getElementById("mic-lang");
+const micBtn = document.getElementById("mic-btn");
+const voiceLang = document.getElementById("voice-lang");
 const voiceBar = document.getElementById("voice-bar");
 const voiceText = document.getElementById("voice-text");
 const voiceSendBtn = document.getElementById("voice-send");
@@ -249,53 +252,22 @@ const langs = [
   { code: "ko-KR", label: "한" },
 ];
 let langIndex = parseInt(localStorage.getItem("voice-lang") || "0");
-micLang.textContent = langs[langIndex].label;
+voiceLang.textContent = langs[langIndex].label;
 
 function toggleLang() {
   langIndex = (langIndex + 1) % langs.length;
-  micLang.textContent = langs[langIndex].label;
+  voiceLang.textContent = langs[langIndex].label;
   localStorage.setItem("voice-lang", langIndex);
 }
 
-// FAB: tap = mic, long press = toggle language
-let longPressTimer = null;
-let didLongPress = false;
-
-micFab.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  didLongPress = false;
-  longPressTimer = setTimeout(() => {
-    didLongPress = true;
-    toggleLang();
-  }, 500);
+// Mic button: tap = record
+addTouchClick("mic-btn", () => {
+  if (isRecording) stopVoice();
+  else startVoice();
 });
 
-micFab.addEventListener("touchend", (e) => {
-  e.preventDefault();
-  clearTimeout(longPressTimer);
-  if (!didLongPress) {
-    if (isRecording) stopVoice();
-    else startVoice();
-  }
-});
-
-micFab.addEventListener("touchmove", () => clearTimeout(longPressTimer));
-
-micFab.addEventListener("mousedown", () => {
-  didLongPress = false;
-  longPressTimer = setTimeout(() => {
-    didLongPress = true;
-    toggleLang();
-  }, 500);
-});
-
-micFab.addEventListener("mouseup", () => {
-  clearTimeout(longPressTimer);
-  if (!didLongPress) {
-    if (isRecording) stopVoice();
-    else startVoice();
-  }
-});
+// Lang button in voice bar: tap = toggle language
+addTouchClick("voice-lang", toggleLang);
 
 function startVoice() {
   if (!SpeechRecognition) {
@@ -309,7 +281,7 @@ function startVoice() {
   recognition.continuous = false;
 
   isRecording = true;
-  micFab.classList.add("recording");
+  micBtn.classList.add("recording");
   voiceBar.classList.remove("voice-hidden");
   voiceText.textContent = "";
 
@@ -327,7 +299,7 @@ function startVoice() {
 
   recognition.onend = () => {
     isRecording = false;
-    micFab.classList.remove("recording");
+    micBtn.classList.remove("recording");
   };
 
   recognition.start();
@@ -339,7 +311,7 @@ function stopVoice() {
     recognition = null;
   }
   isRecording = false;
-  micFab.classList.remove("recording");
+  micBtn.classList.remove("recording");
 }
 
 function sendVoiceText() {
@@ -417,6 +389,19 @@ window.addEventListener("beforeunload", (e) => {
   e.stopImmediatePropagation();
 }, true);
 
+
+// Place mic-wrap in correct slot based on screen width
+function placeMic() {
+  const mic = document.getElementById("mic-btn");
+  if (!mic) return;
+  const wide = window.matchMedia("(min-width: 580px)").matches;
+  const target = document.getElementById(wide ? "mic-wide" : "mic-narrow");
+  if (target && mic.parentElement !== target) {
+    target.appendChild(mic);
+  }
+}
+placeMic();
+window.addEventListener("resize", placeMic);
 
 loadTerminal();
 loadSessions();

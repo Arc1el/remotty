@@ -1,6 +1,17 @@
 const sessionsEl = document.getElementById("sessions");
 const statusEl = document.getElementById("status");
 
+// Theme toggle
+const savedTheme = localStorage.getItem("theme") || "dark";
+document.documentElement.setAttribute("data-theme", savedTheme);
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+});
+
 async function fetchSessions() {
   try {
     const res = await fetch("/api/sessions");
