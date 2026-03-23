@@ -50,8 +50,14 @@ brew install tmux ttyd    # one-time
 make install              # done
 ```
 
-> **Note:** `make install` enables HTTPS by default. Open **https://**localhost:7777 (not http).
-> Your browser will show a one-time security warning — see [HTTPS](#https) for details.
+## Open in browser
+
+```
+https://localhost:7777
+```
+
+**`https://`**, not `http://`. `make install` runs the server with HTTPS enabled.
+On first visit, your browser will show a security warning — tap "Advanced" → "Proceed" once.
 
 ## Features
 
