@@ -20,9 +20,9 @@ Check in from your phone. Scroll through the output. **Speak a command.** All fr
 **Pack your MacBook in your bag, connect your phone's hotspot, and keep working from the bus.** Tap the STT button, say "git status", and it types it into your terminal. Your Mac can stay closed.
 
 <p align="center">
-  <img src="web/wide.png" alt="Wide (foldable / landscape)" width="520">
+  <img src="web/wide.png" alt="Wide (foldable / landscape)" height="400">
   &nbsp;&nbsp;
-  <img src="web/narrow.png" alt="Narrow (phone)" width="200">
+  <img src="web/narrow.png" alt="Narrow (phone)" height="400">
 </p>
 <p align="center">
   <em>Left: foldable / landscape with side panel — Right: phone portrait</em>
