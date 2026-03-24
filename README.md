@@ -82,7 +82,7 @@ https://localhost:7777
 **`https://`**, not `http://`. `make install` runs the server with HTTPS enabled.
 On first visit, your browser will show a security warning — tap "Advanced" → "Proceed" once.
 
-## Access from your phone with Tailscale (recommended)
+## Access from anywhere with Tailscale (recommended)
 
 **We strongly recommend setting up [Tailscale](https://tailscale.com/docs/how-to/quickstart).** It gives your MacBook a fixed IP that works everywhere — same Wi-Fi, phone hotspot, coffee shop, or across the globe. No port forwarding, no VPN config, just install and it works.
 
@@ -106,7 +106,7 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
 
 - **Touch controls** — arrow keys, Enter, Ctrl+C, Escape, Tab — all the keys you need, designed for thumbs
 - **Speech-to-Text (STT)** — tap the STT button, speak a command, send it to the terminal. No tiny keyboard needed. Supports EN and 한국어 — switch languages in the listening bar
-- **Voice Command** — hands-free terminal control. Say "다음" / "ok" to press Enter, "취소" / "cancel" to send Ctrl+C. Orange pulse glow shows the mode is active
+- **Full Voice Mode** — hands-free terminal control. Say "다음" / "ok" to press Enter, "취소" / "cancel" to send Ctrl+C. Orange pulse glow shows the mode is active
 - **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
 - **Session switcher** — tab bar at the top. Switch sessions without going back to the dashboard
 - **Foldable / wide mobile** — on wider screens (Galaxy Fold, iPad, landscape), controls move to a side panel with a draggable resize handle. Terminal gets maximum screen space while controls stay accessible
@@ -172,17 +172,17 @@ STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/e
 
 > **Tip:** On desktop, you may need to manually allow microphone access in browser settings for self-signed cert sites.
 
-## Voice Command
+## Full Voice Mode
 
 <p align="center">
-  <img src="web/voicecmd-demo.gif" alt="Voice Command demo — say keywords to control the terminal" width="480">
+  <img src="web/voicecmd-demo.gif" alt="Full Voice Mode demo — say keywords to control the terminal" width="480">
   <br>
   <em>Say "다음" to press Enter, "취소" to send Ctrl+C — hands-free.</em>
 </p>
 
 Claude Code asks "Do you want to continue?" — just say **"다음"** or **"ok"**. No need to touch anything.
 
-Voice Command mode turns your microphone into a hands-free controller. It continuously listens for short keywords and maps them to terminal keys, so you can approve, reject, or navigate AI agent prompts without looking at the screen.
+Full Voice Mode mode turns your microphone into a hands-free controller. It continuously listens for short keywords and maps them to terminal keys, so you can approve, reject, or navigate AI agent prompts without looking at the screen.
 
 Tap the **Voice** button in the control panel to toggle the mode. An orange pulse glow wraps the terminal while active, and a toast in the center shows what was recognized.
 
@@ -206,7 +206,7 @@ Tap the **Voice** button in the control panel to toggle the mode. An orange puls
   <em>Say "음성인식" to start dictating. It auto-sends when you stop talking.</em>
 </p>
 
-With Voice Command mode on, you don't need the STT button anymore. Just say **"음성인식"** or **"dictate"** — the voice bar opens, you speak a full command, and after 1.5 seconds of silence it auto-sends to the terminal. Then it goes right back to keyword listening. Everything stays hands-free.
+With Full Voice Mode mode on, you don't need the STT button anymore. Just say **"음성인식"** or **"dictate"** — the voice bar opens, you speak a full command, and after 1.5 seconds of silence it auto-sends to the terminal. Then it goes right back to keyword listening. Everything stays hands-free.
 
 > **Example:** You're making coffee while Claude Code runs a multi-step refactor. It pauses — you say "다음". It pauses again — "다음". Now you need to type a command. You say "음성인식", then "git status" — it types and sends it. Back to listening. You never touched your phone.
 
