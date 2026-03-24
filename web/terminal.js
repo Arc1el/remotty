@@ -489,7 +489,245 @@ scrollOverlay.addEventListener("wheel", (e) => {
 });
 
 
-// Voice recognition
+// ─── Voice Command mode ───
+const voicecmdToggle = document.getElementById("voicecmd-toggle");
+const voicecmdOverlay = document.getElementById("voicecmd-overlay");
+let voicecmdMode = false;
+let voicecmdRecognition = null;
+
+// Keyword maps
+const ENTER_KEYWORDS = [
+  // Korean
+  "다음", "확인", "오케이", "알겠어", "네", "응", "좋아", "진행", "계속", "고", "ㅇㅋ",
+  "실행", "엔터", "맞아", "그래", "넘어가", "됐어",
+  // English
+  "next", "ok", "okay", "yes", "confirm", "continue", "go", "enter",
+  "proceed", "sure", "yeah", "yep", "right", "done",
+];
+const CANCEL_KEYWORDS = [
+  // Korean
+  "취소", "안돼", "중지", "멈춰", "아니", "아니야", "그만", "스톱", "빠져나가", "정지",
+  // English
+  "cancel", "stop", "no", "abort", "quit", "exit", "nope", "don't", "halt",
+];
+const DICTATE_KEYWORDS = [
+  // Korean
+  "음성인식", "음성 인식", "입력", "텍스트", "타이핑", "받아쓰기",
+  // English
+  "dictate", "type", "input", "text",
+];
+
+function normalizeText(text) {
+  return text.toLowerCase().replace(/[.,!?;:'"]/g, "").trim();
+}
+
+function matchKeyword(text) {
+  const normalized = normalizeText(text);
+  for (const kw of DICTATE_KEYWORDS) {
+    if (normalized === kw || normalized.endsWith(kw)) return "dictate";
+  }
+  for (const kw of ENTER_KEYWORDS) {
+    if (normalized === kw || normalized.endsWith(kw)) return "enter";
+  }
+  for (const kw of CANCEL_KEYWORDS) {
+    if (normalized === kw || normalized.endsWith(kw)) return "cancel";
+  }
+  return null;
+}
+
+// Voice command toast
+const voicecmdToast = document.getElementById("voicecmd-toast");
+let voicecmdToastTimer = null;
+
+function showVoiceCmdToast(spoken, keyLabel) {
+  clearTimeout(voicecmdToastTimer);
+  voicecmdToast.classList.remove("show");
+  voicecmdToast.innerHTML = `<span class="toast-label">${spoken}</span><span class="toast-key">${keyLabel}</span>`;
+  // Force reflow to restart animation
+  void voicecmdToast.offsetWidth;
+  voicecmdToast.classList.add("show");
+  voicecmdToastTimer = setTimeout(() => {
+    voicecmdToast.classList.remove("show");
+  }, 1200);
+}
+
+let voicecmdTouched = false;
+voicecmdToggle.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  voicecmdTouched = true;
+  toggleVoiceCmd();
+});
+voicecmdToggle.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (!voicecmdTouched) toggleVoiceCmd();
+  voicecmdTouched = false;
+});
+
+function toggleVoiceCmd() {
+  voicecmdMode = !voicecmdMode;
+  voicecmdToggle.classList.toggle("active", voicecmdMode);
+  voicecmdOverlay.classList.toggle("active", voicecmdMode);
+
+  if (voicecmdMode) {
+    startVoiceCmd();
+  } else {
+    stopVoiceCmd();
+  }
+}
+
+function startVoiceCmd() {
+  if (!SpeechRecognition) {
+    alert("This browser does not support speech recognition.");
+    voicecmdMode = false;
+    voicecmdToggle.classList.remove("active");
+    voicecmdOverlay.classList.remove("active");
+    return;
+  }
+
+  voicecmdRecognition = new SpeechRecognition();
+  voicecmdRecognition.lang = langs[langIndex].code;
+  voicecmdRecognition.interimResults = false;
+  voicecmdRecognition.continuous = true;
+
+  voicecmdRecognition.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (!event.results[i].isFinal) continue;
+      const text = event.results[i][0].transcript;
+      const action = matchKeyword(text);
+      if (action === "dictate") {
+        showVoiceCmdToast(text.trim(), "Dictate...");
+        startVoiceCmdDictate();
+        return;
+      } else if (action === "enter") {
+        showVoiceCmdToast(text.trim(), "Enter ↵");
+        sendKey("Enter");
+      } else if (action === "cancel") {
+        showVoiceCmdToast(text.trim(), "Ctrl+C ✕");
+        sendKey("C-c");
+      } else {
+        showVoiceCmdToast(text.trim(), "—");
+      }
+    }
+  };
+
+  voicecmdRecognition.onerror = (event) => {
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      voicecmdMode = false;
+      voicecmdToggle.classList.remove("active");
+      voicecmdOverlay.classList.remove("active");
+    }
+    // "no-speech" / "aborted" → will auto-restart via onend
+  };
+
+  voicecmdRecognition.onend = () => {
+    // Auto-restart if still in voice command mode
+    if (voicecmdMode) {
+      try { voicecmdRecognition.start(); } catch(e) {}
+    }
+  };
+
+  voicecmdRecognition.start();
+}
+
+function stopVoiceCmd() {
+  if (voicecmdRecognition) {
+    voicecmdMode = false; // prevent auto-restart in onend
+    voicecmdRecognition.abort();
+    voicecmdRecognition = null;
+  }
+}
+
+// Voice Command mode: quick dictation (STT button while voice cmd active)
+let voicecmdDictating = false;
+let voicecmdDictateRecognition = null;
+let voicecmdDictateTimer = null;
+
+function startVoiceCmdDictate() {
+  // Pause voice command listening
+  if (voicecmdRecognition) {
+    voicecmdRecognition.abort();
+    voicecmdRecognition = null;
+  }
+
+  voicecmdDictating = true;
+  micBtn.classList.add("recording");
+  voiceBar.classList.remove("voice-hidden");
+  positionVoiceBar();
+  voiceText.textContent = "";
+  voiceText.style.color = "";
+
+  voicecmdDictateRecognition = new SpeechRecognition();
+  voicecmdDictateRecognition.lang = langs[langIndex].code;
+  voicecmdDictateRecognition.interimResults = true;
+  voicecmdDictateRecognition.continuous = true;
+
+  let lastTranscript = "";
+
+  voicecmdDictateRecognition.onresult = (event) => {
+    let interim = "";
+    let final = "";
+    for (let i = 0; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        final += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    lastTranscript = final + interim;
+    voiceText.textContent = lastTranscript;
+
+    // Debounce: auto-send after speech pause
+    clearTimeout(voicecmdDictateTimer);
+    if (lastTranscript.trim()) {
+      voicecmdDictateTimer = setTimeout(() => {
+        const text = lastTranscript.trim();
+        if (text) {
+          showVoiceCmdToast(text, "Send ↵");
+          sendText(text);
+        }
+        stopVoiceCmdDictate();
+      }, 1500);
+    }
+  };
+
+  voicecmdDictateRecognition.onerror = (event) => {
+    if (event.error !== "aborted") {
+      stopVoiceCmdDictate();
+    }
+  };
+
+  voicecmdDictateRecognition.onend = () => {
+    // If still dictating and we have text, send it
+    if (voicecmdDictating && lastTranscript.trim()) {
+      clearTimeout(voicecmdDictateTimer);
+      showVoiceCmdToast(lastTranscript.trim(), "Send ↵");
+      sendText(lastTranscript.trim());
+    }
+    stopVoiceCmdDictate();
+  };
+
+  voicecmdDictateRecognition.start();
+}
+
+function stopVoiceCmdDictate() {
+  clearTimeout(voicecmdDictateTimer);
+  voicecmdDictating = false;
+  micBtn.classList.remove("recording");
+  voiceBar.classList.add("voice-hidden");
+  voiceText.textContent = "";
+
+  if (voicecmdDictateRecognition) {
+    voicecmdDictateRecognition.abort();
+    voicecmdDictateRecognition = null;
+  }
+
+  // Resume voice command listening
+  if (voicecmdMode) {
+    startVoiceCmd();
+  }
+}
+
+// Voice recognition (STT text input)
 const micBtn = document.getElementById("mic-btn");
 const voiceLang = document.getElementById("voice-lang");
 const voiceBar = document.getElementById("voice-bar");
@@ -521,8 +759,12 @@ function positionVoiceBar() {
   }
 }
 
-// Mic button: tap = record
+// Mic button: tap = record (also works as cancel during voice cmd dictation)
 addTouchClick("mic-btn", () => {
+  if (voicecmdDictating) {
+    stopVoiceCmdDictate();
+    return;
+  }
   if (isRecording) stopVoice();
   else startVoice();
 });

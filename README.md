@@ -106,6 +106,7 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
 
 - **Touch controls** — arrow keys, Enter, Ctrl+C, Escape, Tab — all the keys you need, designed for thumbs
 - **Speech-to-Text (STT)** — tap the STT button, speak a command, send it to the terminal. No tiny keyboard needed. Supports EN and 한국어 — switch languages in the listening bar
+- **Voice Command** — hands-free terminal control. Say "다음" / "ok" to press Enter, "취소" / "cancel" to send Ctrl+C. Orange pulse glow shows the mode is active
 - **Scroll mode** — swipe to scroll through terminal history via tmux copy-mode
 - **Session switcher** — tab bar at the top. Switch sessions without going back to the dashboard
 - **Foldable / wide mobile** — on wider screens (Galaxy Fold, iPad, landscape), controls move to a side panel with a draggable resize handle. Terminal gets maximum screen space while controls stay accessible
@@ -170,6 +171,44 @@ Tap the STT button in the terminal controls to start listening. A bar appears wi
 STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) — no API keys, no external services, no cost. Works in Chrome, Safari, and Edge. Requires HTTPS and microphone permission.
 
 > **Tip:** On desktop, you may need to manually allow microphone access in browser settings for self-signed cert sites.
+
+## Voice Command
+
+<p align="center">
+  <img src="web/voicecmd-demo.gif" alt="Voice Command demo — say keywords to control the terminal" width="480">
+  <br>
+  <em>Say "다음" to press Enter, "취소" to send Ctrl+C — hands-free.</em>
+</p>
+
+Claude Code asks "Do you want to continue?" — just say **"다음"** or **"ok"**. No need to touch anything.
+
+Voice Command mode turns your microphone into a hands-free controller. It continuously listens for short keywords and maps them to terminal keys, so you can approve, reject, or navigate AI agent prompts without looking at the screen.
+
+Tap the **Voice** button in the control panel to toggle the mode. An orange pulse glow wraps the terminal while active, and a toast in the center shows what was recognized.
+
+### Keyword → Action
+
+| Action | Keywords (한국어) | Keywords (English) |
+|---|---|---|
+| **Enter** ↵ | 다음, 확인, 오케이, 알겠어, 네, 응, 좋아, 진행, 계속 | next, ok, yes, confirm, continue, go, enter |
+| **Ctrl+C** ✕ | 취소, 안돼, 중지, 멈춰, 아니, 그만 | cancel, stop, no, abort, quit |
+| **Dictate** | 음성인식, 입력, 텍스트, 받아쓰기 | dictate, type, input, text |
+
+- Unrecognized words are ignored — the toast briefly shows `—` so you know it heard something
+- The language follows the same EN/한 toggle used by STT
+- Microphone auto-restarts if the browser's speech recognition session ends
+
+### Voice Dictation — STT without touching a button
+
+<p align="center">
+  <img src="web/voicecmd-dictate-demo.gif" alt="Voice Dictation demo — speak commands without touching a button" width="700">
+  <br>
+  <em>Say "음성인식" to start dictating. It auto-sends when you stop talking.</em>
+</p>
+
+With Voice Command mode on, you don't need the STT button anymore. Just say **"음성인식"** or **"dictate"** — the voice bar opens, you speak a full command, and after 1.5 seconds of silence it auto-sends to the terminal. Then it goes right back to keyword listening. Everything stays hands-free.
+
+> **Example:** You're making coffee while Claude Code runs a multi-step refactor. It pauses — you say "다음". It pauses again — "다음". Now you need to type a command. You say "음성인식", then "git status" — it types and sends it. Back to listening. You never touched your phone.
 
 ## Terminal setup
 

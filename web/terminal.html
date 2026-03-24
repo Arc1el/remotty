@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=36">
+  <link rel="stylesheet" href="/terminal.css?v=47">
 </head>
 <body>
   <div id="session-bar"></div>
@@ -20,6 +20,8 @@
       <iframe id="term-frame" allowfullscreen></iframe>
       <iframe id="preview-frame" allowfullscreen></iframe>
       <div id="scroll-overlay"></div>
+      <div id="voicecmd-overlay"></div>
+      <div id="voicecmd-toast"></div>
     </div>
     <div id="resize-handle"></div>
     <div id="controls">
@@ -32,6 +34,7 @@
         <button data-key="C-c" class="key-btn mod">^C</button>
         <button data-key="C-d" class="key-btn mod">^D</button>
         <button class="key-btn mod" id="scroll-toggle">Scroll</button>
+        <button class="key-btn mod" id="voicecmd-toggle">Voice</button>
       </div>
       <div id="quick-keys">
         <button class="key-btn quick" id="btn-claude">claude</button>
@@ -69,6 +72,6 @@
     <button id="voice-send">&#10003;</button>
     <button id="voice-cancel">&#10005;</button>
   </div>
-  <script src="/terminal.js?v=36"></script>
+  <script src="/terminal.js?v=47"></script>
 </body>
 </html>
