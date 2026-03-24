@@ -49,6 +49,7 @@ Remotty opens **your own terminal on your own Mac** in a browser. No cloud servi
 | Dependencies | Python stdlib only | npm, pip, cargo... |
 | Web UI | 3 files (HTML+CSS+JS) | React, webpack, 200MB node_modules |
 | Mobile input | touch + voice (STT) | keyboard only |
+| Remote preview | Tailscale로 어디서든 dev server 미리보기 가능 | 별도 터널링 필요 |
 | Auto-start | built-in (launchd) | manual setup |
 
 ## How it works
@@ -86,9 +87,10 @@ On first visit, your browser will show a security warning — tap "Advanced" →
 **We strongly recommend setting up [Tailscale](https://tailscale.com/docs/how-to/quickstart).** It gives your MacBook a fixed IP that works everywhere — same Wi-Fi, phone hotspot, coffee shop, or across the globe. No port forwarding, no VPN config, just install and it works.
 
 ```bash
-brew install tailscale     # on your Mac
-tailscale login            # authenticate (opens browser)
-tailscale ip -4            # get your stable IP
+brew install tailscale                  # install
+sudo brew services start tailscale     # start the Tailscale daemon
+tailscale login                         # authenticate (opens browser)
+tailscale ip -4                         # get your stable IP
 # → https://100.x.x.x:7777 from any device on your tailnet
 ```
 
@@ -115,13 +117,42 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
 - **Session rename** — long-press a tab (terminal) or tap the edit icon (dashboard) to rename
 - **Create from web** — tap `+` to spawn a new terminal window
 
+### Dev server preview
+
+- **Inline preview** — add a local dev server port and preview web pages without leaving Remotty
+- **Path navigation** — URL bar to jump to any route. Works with SPA routers, API endpoints, etc.
+- **Reverse-proxied** — previews go through Remotty's HTTPS, so no mixed-content or extra port exposure
+
 ### Infrastructure
 
 - **HTTPS** — self-signed cert auto-generated on first run. Required for STT and other modern browser APIs
-- **Reverse proxy** — ttyd served through the main server. Single port, single cert, no mixed content
+- **Reverse proxy** — ttyd and dev server previews served through a single port. No mixed content
 - **Auto-cleanup** — idle terminal backends are reaped automatically
 - **Auto-start** — server starts on login, restarts on crash (launchd)
 - **Dark / Light theme** — toggle in the dashboard header. Glassmorphism UI with backdrop blur
+
+## Dev server preview
+
+<p align="center">
+  <img src="web/preview-demo.gif" alt="Dev server preview demo — preview web pages inside Remotty" width="600">
+  <br>
+  <em>Click a localhost link in the terminal. It opens as a preview tab.</em>
+</p>
+
+Building a web app with Claude Code or Codex? Tell it to start a dev server on any port — then preview the result right inside Remotty without switching apps.
+
+Tap **+Preview** in the session bar, enter the port number (e.g. `3000`, `5173`), and the page loads in an embedded browser tab. Since Remotty sessions run over Tailscale, this works from your phone, a coffee shop, or anywhere — no extra tunneling required.
+
+- **Add preview** — tap `+Preview`, enter a port. The dev server page loads inline
+- **Path navigation** — edit the URL bar to jump to any route (e.g. `/dashboard`, `/api/health`)
+- **Refresh** — reload the preview without leaving the terminal
+- **Open externally** — pop the preview into a new browser tab
+- **Close** — tap `x` on the preview tab to remove it
+- **Persistent** — preview ports are saved in localStorage, so they survive page reloads
+
+The preview is reverse-proxied through Remotty's HTTPS server, so there are no mixed-content issues and no extra ports to expose.
+
+> **Example workflow:** You're on the bus. You tell Claude Code "make a landing page on port 5173." It starts Vite. You tap `+Preview`, type `5173`, and see the result — all from your phone.
 
 ## Voice input (STT)
 <p align="center">

@@ -8,6 +8,14 @@ if (!windowIndex) {
   location.href = "/";
 }
 
+// Preview state
+let previewPorts = JSON.parse(localStorage.getItem("preview-ports") || "[]");
+let activePreviewPort = null;
+
+function savePreviewPorts() {
+  localStorage.setItem("preview-ports", JSON.stringify(previewPorts));
+}
+
 // Session bar
 const sessionBar = document.getElementById("session-bar");
 
@@ -47,6 +55,38 @@ async function loadSessions() {
 
       sessionBar.appendChild(tab);
     });
+
+    // Preview tabs
+    previewPorts.forEach(port => {
+      const tab = document.createElement("button");
+      tab.className = "session-tab preview-tab" + (activePreviewPort === port ? " active" : "");
+      tab.innerHTML = `:${port} <span class="preview-close" data-port="${port}">&times;</span>`;
+
+      tab.addEventListener("click", (e) => {
+        if (e.target.classList.contains("preview-close")) {
+          removePreview(parseInt(e.target.dataset.port));
+          return;
+        }
+        showPreview(port);
+      });
+      tab.addEventListener("touchend", (e) => {
+        if (e.target.classList.contains("preview-close")) {
+          e.preventDefault();
+          removePreview(parseInt(e.target.dataset.port));
+          return;
+        }
+      });
+
+      sessionBar.appendChild(tab);
+    });
+
+    // Add preview button
+    const addBtn = document.createElement("button");
+    addBtn.id = "add-preview-btn";
+    addBtn.textContent = "+Preview";
+    addBtn.addEventListener("click", addPreview);
+    sessionBar.appendChild(addBtn);
+
     // Hint
     const hint = document.createElement("span");
     hint.id = "session-bar-hint";
@@ -67,12 +107,219 @@ async function renameSession(idx, currentName) {
 }
 
 function switchSession(idx) {
-  if (idx == windowIndex) return;
+  activePreviewPort = null;
+  document.body.classList.remove("preview-mode");
+  if (idx == windowIndex) { loadSessions(); return; }
   windowIndex = idx;
   history.replaceState(null, "", `?window=${idx}`);
   loadTerminal();
   loadSessions();
 }
+
+// Intercept localhost/127.0.0.1 URLs and open as preview
+function interceptLocalhost(url) {
+  try {
+    const u = new URL(url, location.href);
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+      const port = parseInt(u.port) || (u.protocol === "https:" ? 443 : 80);
+      if (port >= 1024 && port <= 65535) {
+        if (!previewPorts.includes(port)) {
+          previewPorts.push(port);
+          savePreviewPorts();
+        }
+        showPreview(port, u.pathname + u.search);
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+// Install link interceptor in ttyd iframe
+const LOCALHOST_RE = /https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)(\/\S*)?/g;
+
+function installLinkInterceptor(frame) {
+  try {
+    const w = frame.contentWindow;
+    if (!w || w._remottyHooked) return;
+
+    const nativeOpen = w.open;
+
+    // Fake window object for xterm's open() → location.href pattern
+    function makeFakePopup() {
+      return {
+        get opener() { return null; },
+        set opener(v) {},
+        close() {},
+        get location() {
+          return {
+            get href() { return ""; },
+            set href(url) {
+              if (typeof url === "string" && interceptLocalhost(url)) return;
+              // Not localhost — actually open it
+              const real = nativeOpen.call(w, url);
+              if (real) { try { real.opener = null; } catch(e) {} }
+            }
+          };
+        },
+        set location(url) {
+          if (typeof url === "string" && interceptLocalhost(url)) return;
+          nativeOpen.call(w, url);
+        }
+      };
+    }
+
+    function proxyOpen(url, target, features) {
+      // Direct URL open
+      if (url && url !== "" && url !== "about:blank") {
+        if (interceptLocalhost(String(url))) return null;
+        return nativeOpen.call(w, url, target, features);
+      }
+      // Blank open (xterm pattern) → return fake to intercept location.href
+      return makeFakePopup();
+    }
+
+    // Use defineProperty so ttyd/xterm can't overwrite our override
+    Object.defineProperty(w, "open", {
+      configurable: true,
+      enumerable: true,
+      get() { return proxyOpen; },
+      set() {} // block overwrites
+    });
+
+    // Register custom link provider for click-without-modifier
+    function tryRegisterLinkProvider() {
+      // ttyd stores terminal in various places
+      const term = w.term || w.terminal;
+      if (term && term.registerLinkProvider && !term._remottyProvider) {
+        term._remottyProvider = true;
+        term.registerLinkProvider({
+          provideLinks(y, callback) {
+            try {
+              const line = term.buffer.active.getLine(y);
+              if (!line) { callback([]); return; }
+              let text = "";
+              for (let i = 0; i < line.length; i++) {
+                text += line.getCell(i)?.getChars() || " ";
+              }
+              const links = [];
+              let m;
+              LOCALHOST_RE.lastIndex = 0;
+              while ((m = LOCALHOST_RE.exec(text)) !== null) {
+                const matchUrl = m[0];
+                links.push({
+                  range: { start: { x: m.index + 1, y }, end: { x: m.index + matchUrl.length, y } },
+                  text: matchUrl,
+                  activate() {
+                    window.parent.postMessage({ type: "remotty-preview", url: matchUrl }, "*");
+                  }
+                });
+              }
+              callback(links);
+            } catch(e) { callback([]); }
+          }
+        });
+        return true;
+      }
+      return false;
+    }
+
+    // Retry link provider registration (xterm loads async)
+    if (!tryRegisterLinkProvider()) {
+      let attempts = 0;
+      const timer = setInterval(() => {
+        if (tryRegisterLinkProvider() || ++attempts > 20) clearInterval(timer);
+      }, 500);
+    }
+
+    w._remottyHooked = true;
+  } catch(e) {}
+}
+
+// Listen for postMessage from iframe link provider
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "remotty-preview" && e.data.url) {
+    interceptLocalhost(e.data.url);
+  }
+});
+
+// Preview functions
+function addPreview() {
+  const input = prompt("Dev server port number (e.g. 3000, 5173)");
+  if (!input) return;
+  const port = parseInt(input.trim());
+  if (isNaN(port) || port < 1024 || port > 65535) {
+    alert("Port must be between 1024 and 65535");
+    return;
+  }
+  if (!previewPorts.includes(port)) {
+    previewPorts.push(port);
+    savePreviewPorts();
+  }
+  showPreview(port);
+}
+
+function removePreview(port) {
+  previewPorts = previewPorts.filter(p => p !== port);
+  savePreviewPorts();
+  if (activePreviewPort === port) {
+    activePreviewPort = null;
+    document.body.classList.remove("preview-mode");
+  }
+  loadSessions();
+}
+
+let previewPath = "/";
+
+function showPreview(port, path) {
+  activePreviewPort = port;
+  previewPath = path || "/";
+  document.body.classList.add("preview-mode");
+  navigatePreview();
+  loadSessions();
+}
+
+function navigatePreview() {
+  const frame = document.getElementById("preview-frame");
+  const pathInput = document.getElementById("preview-path");
+  const extLink = document.getElementById("preview-open-external");
+
+  // Ensure path starts with /
+  if (!previewPath.startsWith("/")) previewPath = "/" + previewPath;
+
+  const proxyUrl = `/preview/${activePreviewPort}${previewPath}`;
+  frame.src = proxyUrl;
+  pathInput.value = `localhost:${activePreviewPort}${previewPath}`;
+  const directUrl = `${location.protocol}//${location.hostname}:${activePreviewPort}${previewPath}`;
+  extLink.href = directUrl;
+}
+
+function goToPreviewPath() {
+  const pathInput = document.getElementById("preview-path");
+  let val = pathInput.value.trim();
+  // Strip "localhost:PORT" prefix if present
+  val = val.replace(/^(https?:\/\/)?[^/]*/, "");
+  previewPath = val || "/";
+  navigatePreview();
+}
+
+// Preview toolbar: go button
+document.getElementById("preview-go").addEventListener("click", goToPreviewPath);
+
+// Enter key in path input
+document.getElementById("preview-path").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    goToPreviewPath();
+  }
+});
+
+// Preview toolbar: refresh
+document.getElementById("preview-refresh").addEventListener("click", () => {
+  if (activePreviewPort) {
+    navigatePreview();
+  }
+});
 
 // Load terminal iframe
 async function loadTerminal() {
@@ -85,7 +332,13 @@ async function loadTerminal() {
   const data = await res.json();
   const frame = document.getElementById("term-frame");
   frame.src = data.url;
+  // Hook window.open ASAP — poll before load event fires
+  const earlyHook = setInterval(() => {
+    try { if (frame.contentWindow) installLinkInterceptor(frame); } catch(e) {}
+  }, 100);
+  setTimeout(() => clearInterval(earlyHook), 10000);
   frame.addEventListener("load", () => {
+    clearInterval(earlyHook);
     try {
       const w = frame.contentWindow;
       // Suppress "leave site?" dialog
@@ -98,6 +351,7 @@ async function loadTerminal() {
       w.document.activeElement?.blur();
       setTimeout(() => { w.document.activeElement?.blur(); }, 500);
     } catch (e) {}
+    installLinkInterceptor(frame);
   });
 }
 

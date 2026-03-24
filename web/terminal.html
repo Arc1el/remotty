@@ -5,13 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Remotty</title>
   <link rel="icon" href="/remotty_icon.ico">
-  <link rel="stylesheet" href="/terminal.css?v=31">
+  <link rel="stylesheet" href="/terminal.css?v=36">
 </head>
 <body>
   <div id="session-bar"></div>
+  <div id="preview-toolbar">
+    <input id="preview-path" type="text" placeholder="/" spellcheck="false" autocomplete="off">
+    <button id="preview-go" title="Go">&#8594;</button>
+    <button id="preview-refresh" title="Refresh">&#8635;</button>
+    <a id="preview-open-external" title="Open in new tab" target="_blank">&#8599;</a>
+  </div>
   <div id="main-area">
     <div id="terminal-wrap">
       <iframe id="term-frame" allowfullscreen></iframe>
+      <iframe id="preview-frame" allowfullscreen></iframe>
       <div id="scroll-overlay"></div>
     </div>
     <div id="resize-handle"></div>
@@ -62,6 +69,6 @@
     <button id="voice-send">&#10003;</button>
     <button id="voice-cancel">&#10005;</button>
   </div>
-  <script src="/terminal.js"></script>
+  <script src="/terminal.js?v=36"></script>
 </body>
 </html>

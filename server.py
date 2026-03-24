@@ -245,9 +245,30 @@ def scroll_tmux(window_index, direction):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    def _get_preview_port_from_referer(self):
+        """Check if request originates from a preview iframe via Referer header."""
+        import re
+        referer = self.headers.get("Referer", "")
+        m = re.search(r"/preview/(\d+)/", referer)
+        if m:
+            return int(m.group(1))
+        return None
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
+
+        # Direct preview proxy
+        if parsed.path.startswith("/preview/"):
+            self._proxy_preview()
+            return
+
+        # Assets requested from within a preview iframe (Referer-based routing)
+        if not path.startswith("/api") and not path.startswith("/ttyd"):
+            preview_port = self._get_preview_port_from_referer()
+            if preview_port:
+                self._proxy_preview_asset(preview_port)
+                return
 
         if path == "" or path == "/index.html":
             self._serve_file("index.html", "text/html")
@@ -277,6 +298,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
+
+        if parsed.path.startswith("/preview/"):
+            self._proxy_preview()
+            return
+
+        # Referer-based routing for preview assets
+        if not path.startswith("/api"):
+            preview_port = self._get_preview_port_from_referer()
+            if preview_port:
+                self._proxy_preview_asset(preview_port)
+                return
 
         if path == "/api/new-window":
             self._handle_new_window()
@@ -565,11 +597,127 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception:
             pass
 
+    def _proxy_preview(self):
+        """Reverse-proxy HTTP and WebSocket requests to a local dev server."""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        # /preview/{port}/...
+        parts = path.split("/", 3)
+        try:
+            port = int(parts[2])
+        except (IndexError, ValueError):
+            self.send_error(400, "Invalid preview port")
+            return
+
+        if port < 1024 or port > 65535:
+            self.send_error(400, "Port out of range (1024-65535)")
+            return
+
+        # Rewrite path: strip /preview/{port} prefix
+        remainder = "/" + parts[3] if len(parts) > 3 else "/"
+        target = remainder
+        if parsed.query:
+            target += "?" + parsed.query
+
+        if self.headers.get("Upgrade", "").lower() == "websocket":
+            self._proxy_websocket(port, target)
+            return
+
+        # HTTP proxy
+        try:
+            method = self.command
+            body = None
+            length = int(self.headers.get("Content-Length", 0))
+            if length > 0:
+                body = self.rfile.read(length)
+
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            headers = {}
+            for key, val in self.headers.items():
+                if key.lower() not in ("host", "connection"):
+                    headers[key] = val
+            headers["Host"] = f"127.0.0.1:{port}"
+            conn.request(method, target, body=body, headers=headers)
+            resp = conn.getresponse()
+            resp_body = resp.read()
+
+            self.send_response(resp.status)
+            for key, val in resp.getheaders():
+                if key.lower() not in ("transfer-encoding", "connection", "x-frame-options",
+                                       "content-security-policy"):
+                    self.send_header(key, val)
+            self.send_header("Content-Length", len(resp_body))
+            self.end_headers()
+            self._write(resp_body)
+            conn.close()
+        except ConnectionRefusedError:
+            self.send_error(502, f"Cannot connect to localhost:{port}")
+        except Exception as e:
+            self.send_error(502, str(e))
+
+    def _proxy_preview_asset(self, port):
+        """Proxy an asset request to a local dev server (Referer-based routing)."""
+        parsed = urlparse(self.path)
+        target = parsed.path
+        if parsed.query:
+            target += "?" + parsed.query
+
+        if self.headers.get("Upgrade", "").lower() == "websocket":
+            self._proxy_websocket(port, target)
+            return
+
+        try:
+            method = self.command
+            body = None
+            length = int(self.headers.get("Content-Length", 0))
+            if length > 0:
+                body = self.rfile.read(length)
+
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            headers = {}
+            for key, val in self.headers.items():
+                if key.lower() not in ("host", "connection"):
+                    headers[key] = val
+            headers["Host"] = f"127.0.0.1:{port}"
+            conn.request(method, target, body=body, headers=headers)
+            resp = conn.getresponse()
+            resp_body = resp.read()
+
+            self.send_response(resp.status)
+            for key, val in resp.getheaders():
+                if key.lower() not in ("transfer-encoding", "connection", "x-frame-options",
+                                       "content-security-policy"):
+                    self.send_header(key, val)
+            self.send_header("Content-Length", len(resp_body))
+            self.end_headers()
+            self._write(resp_body)
+            conn.close()
+        except ConnectionRefusedError:
+            self.send_error(502, f"Cannot connect to localhost:{port}")
+        except Exception:
+            self.send_error(502)
+
     def _write(self, data):
         try:
             self.wfile.write(data)
         except BrokenPipeError:
             pass
+
+    def _handle_other_method(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/preview/"):
+            self._proxy_preview()
+        else:
+            preview_port = self._get_preview_port_from_referer()
+            if preview_port:
+                self._proxy_preview_asset(preview_port)
+            else:
+                self.send_error(404)
+
+    do_PUT = _handle_other_method
+    do_DELETE = _handle_other_method
+    do_PATCH = _handle_other_method
+    do_OPTIONS = _handle_other_method
 
     def log_message(self, format, *args):
         pass
