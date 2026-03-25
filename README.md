@@ -41,8 +41,12 @@ Claude Code, Codex, and other AI agents run long tasks in your terminal. You sho
 Yes, Anthropic offers [Claude Code Remote](https://docs.anthropic.com/en/docs/claude-code/remote). But once you actually use it, you'll notice:
 
 - **It's unstable.** Connections drop frequently, and sessions can vanish without warning.
-- **It's not what I wanted.** OpenClaude channel updates, version changes, and other factors outside your control can shift the environment at any time — breaking your workflow when you least expect it.
+- **It's not what I wanted.** Server-side updates, version changes, and other factors outside your control can shift the environment at any time — breaking your workflow when you least expect it.
 - **It's not your terminal.** Your local environment, your dotfiles, your tmux config — you want all of that as-is. On a remote container, something always feels off.
+
+### "What about Claude Code Channels?"
+
+[Channels](https://docs.anthropic.com/en/docs/claude-code/channels) let you send messages to a Claude Code session from Telegram, Discord, or a webhook — but they're a notification bridge, not a terminal. You can't see the terminal output, scroll through history, or preview a dev server. Remotty gives you the full terminal in a browser, with touch controls, voice input, and live preview — things Channels aren't designed to do. They solve different problems: Channels push events *into* Claude, Remotty lets you *watch and control* what Claude is doing.
 
 Remotty opens **your own terminal on your own Mac** in a browser. No cloud service dependency, your environment stays 100% intact, and you can connect from anywhere.
 
