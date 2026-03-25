@@ -239,7 +239,7 @@ Claude Code나 Codex로 웹 앱을 만들고 있나요? 아무 포트에서 dev 
 4. **Command**에서 **Command**를 선택하고 입력:
 
 ```
-/opt/homebrew/bin/tmux -u new-session -t remotty \; new-window
+tmux -u new-session -t remotty \; new-window
 ```
 
 5. iTerm2 재시작
