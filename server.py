@@ -286,6 +286,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._serve_file("remotty.svg", "image/svg+xml")
         elif path == "/remotty_icon.ico":
             self._serve_file("remotty_icon.ico", "image/x-icon")
+        elif path == "/viewer.html" or path == "/viewer":
+            self._serve_file("viewer.html", "text/html")
+        elif path == "/api/file":
+            self._handle_file_read(parsed)
         elif path == "/api/sessions":
             self._json_response(get_sessions())
         elif path.startswith("/api/terminal/"):
@@ -408,6 +412,37 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json_response({"ok": True})
         except Exception:
             self._json_response({"ok": False})
+
+    def _handle_file_read(self, parsed):
+        """Read a local file and return its content. Restricted to text files."""
+        from urllib.parse import parse_qs
+        params = parse_qs(parsed.query)
+        file_path = params.get("path", [None])[0]
+        if not file_path:
+            self.send_error(400, "Missing path parameter")
+            return
+
+        # Expand ~ and resolve
+        file_path = os.path.expanduser(file_path)
+        file_path = os.path.realpath(file_path)
+
+        # Only allow readable text files
+        ALLOWED_EXT = {".md", ".markdown", ".txt", ".rst", ".org", ".adoc"}
+        _, ext = os.path.splitext(file_path)
+        if ext.lower() not in ALLOWED_EXT:
+            self.send_error(403, f"File type not allowed: {ext}")
+            return
+
+        if not os.path.isfile(file_path):
+            self.send_error(404, "File not found")
+            return
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            self._json_response({"content": content, "path": file_path})
+        except Exception as e:
+            self.send_error(500, str(e))
 
     def _serve_file(self, filename, content_type):
         filepath = WEB_DIR / filename

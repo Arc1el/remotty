@@ -52,19 +52,9 @@ Remotty opens **your own terminal on your own Mac** in a browser. No cloud servi
 | Remote preview | Tailscale로 어디서든 dev server 미리보기 가능 | 별도 터널링 필요 |
 | Auto-start | built-in (launchd) | manual setup |
 
-## How it works
+## Getting started
 
-```
-Terminal → tmux → ttyd → reverse proxy → Browser
-```
-
-1. Your terminal runs inside a tmux session called `remotty`
-2. The server watches tmux and lists active windows
-3. Click a session in the web dashboard — you're in. Same session, same I/O
-
-Claude Code running in window 2? Tap it. You see exactly what it sees. You can type exactly as if you were there.
-
-## Quick start
+### Install
 
 ```bash
 brew install tmux ttyd                      # one-time
@@ -73,7 +63,7 @@ cd remotty
 make install                                # done
 ```
 
-## Open in browser
+### Open in browser
 
 ```
 https://localhost:7777
@@ -82,7 +72,7 @@ https://localhost:7777
 **`https://`**, not `http://`. `make install` runs the server with HTTPS enabled.
 On first visit, your browser will show a security warning — tap "Advanced" → "Proceed" once.
 
-## Access from anywhere with Tailscale (recommended)
+### Access from anywhere with Tailscale (recommended)
 
 **We strongly recommend setting up [Tailscale](https://tailscale.com/docs/how-to/quickstart).** It gives your MacBook a fixed IP that works everywhere — same Wi-Fi, phone hotspot, coffee shop, or across the globe. No port forwarding, no VPN config, just install and it works.
 
@@ -97,6 +87,18 @@ tailscale ip -4                         # get your stable IP
 Install Tailscale on your phone too ([iOS](https://apps.apple.com/app/tailscale/id1470499037) / [Android](https://play.google.com/store/apps/details?id=com.tailscale.ipn)) and log in with the same account. Bookmark `https://100.x.x.x:7777` — it always connects, whether you're on the same network or not.
 
 > **No Tailscale?** If your phone and Mac are on the same network (Wi-Fi or hotspot), connect via your Mac's local IP. Or use the **phone hotspot trick** — connect your MacBook to your phone's hotspot, close the lid, put it in your bag, and open `https://localhost:7777` on your phone.
+
+## How it works
+
+```
+Terminal → tmux → ttyd → reverse proxy → Browser
+```
+
+1. Your terminal runs inside a tmux session called `remotty`
+2. The server watches tmux and lists active windows
+3. Click a session in the web dashboard — you're in. Same session, same I/O
+
+Claude Code running in window 2? Tap it. You see exactly what it sees. You can type exactly as if you were there.
 
 ## Features
 
@@ -132,6 +134,64 @@ Remotty is built for the phone in your hand, not the keyboard on your desk.
 - **Auto-start** — server starts on login, restarts on crash (launchd)
 - **Dark / Light theme** — toggle in the dashboard header. Glassmorphism UI with backdrop blur
 
+## Voice input (STT)
+
+<p align="center">
+  <img src="web/stt-demo.gif" alt="STT demo — speak a command into your terminal" width="300">
+  <br>
+  <em>Speak a command. It types into your terminal.</em>
+</p>
+
+Tap the STT button in the terminal controls to start listening. A bar appears with:
+
+- Your transcribed text (live preview)
+- **Language toggle** — tap `EN` / `한` to switch between English and Korean
+- **Send** (✓) — sends the text to the terminal
+- **Cancel** (✕) — discard and close
+
+STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) — no API keys, no external services, no cost. Works in Chrome, Safari, and Edge. Requires HTTPS and microphone permission.
+
+> **Tip:** On desktop, you may need to manually allow microphone access in browser settings for self-signed cert sites.
+
+## Full Voice Mode
+
+<p align="center">
+  <img src="web/voicecmd-demo.gif" alt="Full Voice Mode demo — say keywords to control the terminal" width="480">
+  <br>
+  <em>Say "다음" to press Enter, "취소" to send Ctrl+C — hands-free.</em>
+</p>
+
+Claude Code asks "Do you want to continue?" — just say **"다음"** or **"ok"**. No need to touch anything.
+
+Full Voice Mode turns your microphone into a hands-free controller. It continuously listens for short keywords and maps them to terminal keys, so you can approve, reject, or navigate AI agent prompts without looking at the screen.
+
+Tap the **Voice** button in the control panel to toggle the mode. An orange pulse glow wraps the terminal while active, and a toast in the center shows what was recognized.
+
+### Keyword → Action
+
+| Action | Keywords (한국어) | Keywords (English) |
+|---|---|---|
+| **Enter** ↵ | 다음, 확인, 오케이, 알겠어, 네, 응, 좋아, 진행, 계속 | next, ok, yes, confirm, continue, go, enter |
+| **Ctrl+C** ✕ | 취소, 안돼, 중지, 멈춰, 아니, 그만 | cancel, stop, no, abort, quit |
+
+- **Short (1-2 words)** → keyword match → execute command
+- **Long (3+ words)** → automatically treated as text input and sent to the terminal after 3 seconds of silence
+- Unrecognized short words are ignored — the toast briefly shows `—` so you know it heard something
+- The language follows the same EN/한 toggle used by STT
+- Microphone auto-restarts if the browser's speech recognition session ends
+
+### Auto Dictation
+
+<p align="center">
+  <img src="web/voicecmd-dictate-demo.gif" alt="Voice Dictation demo — speak commands without touching a button" width="700">
+  <br>
+  <em>Speak a longer phrase — it auto-sends after 3 seconds of silence.</em>
+</p>
+
+No trigger keyword needed. Just speak naturally — Full Voice Mode detects the length automatically. Short words like "다음" trigger commands instantly. Longer phrases like "git status" show the voice bar with a countdown timer, then auto-send when you stop talking.
+
+> **Example:** You're making coffee while Claude Code runs a multi-step refactor. It pauses — you say "다음". It pauses again — "다음". Now you need to type a command. You just say "git status" — the voice bar appears, counts down 3 seconds of silence, and sends it. Back to listening. You never touched your phone.
+
 ## Dev server preview
 
 <p align="center">
@@ -155,68 +215,15 @@ The preview is reverse-proxied through Remotty's HTTPS server, so there are no m
 
 > **Example workflow:** You're on the bus. You tell Claude Code "make a landing page on port 5173." It starts Vite. You tap `+Preview`, type `5173`, and see the result — all from your phone.
 
-## Voice input (STT)
-<p align="center">
-  <img src="web/stt-demo.gif" alt="STT demo — speak a command into your terminal" width="300">
-  <br>
-  <em>Speak a command. It types into your terminal.</em>
-</p>
-Tap the STT button in the terminal controls to start listening. A bar appears with:
+## Reference
 
-- Your transcribed text (live preview)
-- **Language toggle** — tap `EN` / `한` to switch between English and Korean
-- **Send** (✓) — sends the text to the terminal
-- **Cancel** (✕) — discard and close
+### Terminal setup
 
-STT uses the browser's built-in [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) — no API keys, no external services, no cost. Works in Chrome, Safari, and Edge. Requires HTTPS and microphone permission.
-
-> **Tip:** On desktop, you may need to manually allow microphone access in browser settings for self-signed cert sites.
-
-## Full Voice Mode
-
-<p align="center">
-  <img src="web/voicecmd-demo.gif" alt="Full Voice Mode demo — say keywords to control the terminal" width="480">
-  <br>
-  <em>Say "다음" to press Enter, "취소" to send Ctrl+C — hands-free.</em>
-</p>
-
-Claude Code asks "Do you want to continue?" — just say **"다음"** or **"ok"**. No need to touch anything.
-
-Full Voice Mode mode turns your microphone into a hands-free controller. It continuously listens for short keywords and maps them to terminal keys, so you can approve, reject, or navigate AI agent prompts without looking at the screen.
-
-Tap the **Voice** button in the control panel to toggle the mode. An orange pulse glow wraps the terminal while active, and a toast in the center shows what was recognized.
-
-### Keyword → Action
-
-| Action | Keywords (한국어) | Keywords (English) |
-|---|---|---|
-| **Enter** ↵ | 다음, 확인, 오케이, 알겠어, 네, 응, 좋아, 진행, 계속 | next, ok, yes, confirm, continue, go, enter |
-| **Ctrl+C** ✕ | 취소, 안돼, 중지, 멈춰, 아니, 그만 | cancel, stop, no, abort, quit |
-| **Dictate** | 음성인식, 입력, 텍스트, 받아쓰기 | dictate, type, input, text |
-
-- Unrecognized words are ignored — the toast briefly shows `—` so you know it heard something
-- The language follows the same EN/한 toggle used by STT
-- Microphone auto-restarts if the browser's speech recognition session ends
-
-### Voice Dictation — STT without touching a button
-
-<p align="center">
-  <img src="web/voicecmd-dictate-demo.gif" alt="Voice Dictation demo — speak commands without touching a button" width="700">
-  <br>
-  <em>Say "음성인식" to start dictating. It auto-sends when you stop talking.</em>
-</p>
-
-With Full Voice Mode mode on, you don't need the STT button anymore. Just say **"음성인식"** or **"dictate"** — the voice bar opens, you speak a full command, and after 1.5 seconds of silence it auto-sends to the terminal. Then it goes right back to keyword listening. Everything stays hands-free.
-
-> **Example:** You're making coffee while Claude Code runs a multi-step refactor. It pauses — you say "다음". It pauses again — "다음". Now you need to type a command. You say "음성인식", then "git status" — it types and sends it. Back to listening. You never touched your phone.
-
-## Terminal setup
-
-### Kaku
+#### Kaku
 
 Automatic. `make install` handles everything.
 
-### iTerm2
+#### iTerm2
 
 1. Open **iTerm2 → Settings → Profiles**
 2. Select your profile (or create a new one)
@@ -231,7 +238,7 @@ Automatic. `make install` handles everything.
 
 Every new tab/window will create a **new tmux window** inside the `remotty` session — same behavior as Kaku.
 
-### Any other terminal
+#### Any other terminal
 
 Add to your `~/.zshrc` (or `~/.bashrc`):
 
@@ -242,7 +249,7 @@ if [ -z "$TMUX" ]; then
 fi
 ```
 
-## HTTPS
+### HTTPS
 
 `make install` sets up the server with HTTPS by default (`--https` flag). A self-signed certificate is auto-generated on first run in `.certs/`.
 
@@ -252,7 +259,7 @@ Your browser will show a security warning on first visit — tap "Advanced" → 
 
 **Why HTTPS matters:** Speech-to-Text, microphone access, and other modern browser APIs require a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts). HTTPS provides that, even with a self-signed cert.
 
-## Commands
+### Commands
 
 | Command | What it does |
 |---|---|
@@ -263,7 +270,7 @@ Your browser will show a security warning on first visit — tap "Advanced" → 
 | `make sync` | Deploy code changes |
 | `make status` | Check Tailscale + tmux |
 
-## Stack
+### Stack
 
 ```
 server.py ........ Python stdlib (HTTPS, reverse proxy, WebSocket relay)

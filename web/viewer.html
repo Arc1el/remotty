@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remotty — Viewer</title>
+  <link rel="icon" href="/remotty_icon.ico">
+  <style>
+    :root {
+      --bg: #09090b;
+      --text: #e4e4e7;
+      --text-dim: #a1a1aa;
+      --border: rgba(255,255,255,0.08);
+      --accent: #a78bfa;
+      --code-bg: rgba(255,255,255,0.06);
+      --link: #60a5fa;
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --text: #18181b;
+      --text-dim: #71717a;
+      --border: rgba(0,0,0,0.08);
+      --accent: #7c3aed;
+      --code-bg: rgba(0,0,0,0.04);
+      --link: #2563eb;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.7;
+      padding: 24px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #content h1 { font-size: 1.8em; margin: 1.2em 0 0.6em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+    #content h2 { font-size: 1.4em; margin: 1.1em 0 0.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
+    #content h3 { font-size: 1.15em; margin: 1em 0 0.4em; }
+    #content h4 { font-size: 1em; margin: 0.8em 0 0.3em; }
+    #content p { margin: 0.6em 0; }
+    #content a { color: var(--link); text-decoration: none; }
+    #content a:hover { text-decoration: underline; }
+    #content code {
+      font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+    }
+    #content pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      overflow-x: auto;
+      margin: 0.8em 0;
+    }
+    #content pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+    }
+    #content blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 14px;
+      color: var(--text-dim);
+      margin: 0.8em 0;
+    }
+    #content ul, #content ol { padding-left: 1.8em; margin: 0.5em 0; }
+    #content li { margin: 0.25em 0; }
+    #content table { border-collapse: collapse; margin: 0.8em 0; width: 100%; }
+    #content th, #content td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+    #content th { background: var(--code-bg); font-weight: 600; }
+    #content hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+    #content img { max-width: 100%; border-radius: 8px; margin: 0.5em 0; }
+    #error { color: #f87171; text-align: center; margin-top: 40px; }
+    #path-bar {
+      font-size: 12px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      color: var(--text-dim);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="path-bar"></div>
+  <div id="content"></div>
+  <div id="error"></div>
+  <script>
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "light");
+
+    const params = new URLSearchParams(location.search);
+    const filePath = params.get("path");
+
+    if (!filePath) {
+      document.getElementById("error").textContent = "No file path specified. Use ?path=/path/to/file.md";
+    } else {
+      document.getElementById("path-bar").textContent = filePath;
+      document.title = `Remotty — ${filePath.split("/").pop()}`;
+
+      fetch(`/api/file?path=${encodeURIComponent(filePath)}`)
+        .then(r => { if (!r.ok) throw new Error(`${r.status} ${r.statusText}`); return r.json(); })
+        .then(data => {
+          document.getElementById("content").innerHTML = renderMarkdown(data.content);
+        })
+        .catch(e => {
+          document.getElementById("error").textContent = `Failed to load: ${e.message}`;
+        });
+    }
+
+    function renderMarkdown(src) {
+      // Normalize line endings
+      src = src.replace(/\r\n/g, "\n");
+
+      // Collect code blocks first to protect them
+      const codeBlocks = [];
+      src = src.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+        codeBlocks.push(`<pre><code>${esc(code.replace(/\n$/, ""))}</code></pre>`);
+        return `\x00CODE${codeBlocks.length - 1}\x00`;
+      });
+
+      // Tables
+      src = src.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)+)/gm, (_, header, sep, body) => {
+        const th = header.split("|").filter(c => c.trim()).map(c => `<th>${inline(c.trim())}</th>`).join("");
+        const rows = body.trim().split("\n").map(row => {
+          const cells = row.split("|").filter(c => c.trim()).map(c => `<td>${inline(c.trim())}</td>`).join("");
+          return `<tr>${cells}</tr>`;
+        }).join("");
+        return `<table><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table>`;
+      });
+
+      // Process line by line
+      const lines = src.split("\n");
+      let html = "";
+      let inList = false;
+      let listType = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+
+        // Code block placeholder
+        const cbMatch = line.match(/^\x00CODE(\d+)\x00$/);
+        if (cbMatch) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          html += codeBlocks[parseInt(cbMatch[1])];
+          continue;
+        }
+
+        // Headings
+        const hMatch = line.match(/^(#{1,6})\s+(.+)/);
+        if (hMatch) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          const level = hMatch[1].length;
+          html += `<h${level}>${inline(hMatch[2])}</h${level}>`;
+          continue;
+        }
+
+        // HR
+        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          html += "<hr>";
+          continue;
+        }
+
+        // Blockquote
+        if (line.startsWith("> ")) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          let bq = line.slice(2);
+          while (i + 1 < lines.length && (lines[i + 1].startsWith("> ") || (lines[i + 1].trim() && !lines[i + 1].startsWith("#")))) {
+            i++;
+            bq += "\n" + (lines[i].startsWith("> ") ? lines[i].slice(2) : lines[i]);
+            if (!lines[i].trim()) break;
+          }
+          html += `<blockquote>${renderMarkdown(bq)}</blockquote>`;
+          continue;
+        }
+
+        // Unordered list
+        const ulMatch = line.match(/^(\s*)[-*+]\s+(.+)/);
+        if (ulMatch) {
+          if (!inList || listType !== "ul") {
+            if (inList) html += `</${listType}>`;
+            html += "<ul>";
+            inList = true;
+            listType = "ul";
+          }
+          html += `<li>${inline(ulMatch[2])}</li>`;
+          continue;
+        }
+
+        // Ordered list
+        const olMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
+        if (olMatch) {
+          if (!inList || listType !== "ol") {
+            if (inList) html += `</${listType}>`;
+            html += "<ol>";
+            inList = true;
+            listType = "ol";
+          }
+          html += `<li>${inline(olMatch[2])}</li>`;
+          continue;
+        }
+
+        // Close list if needed
+        if (inList && !line.trim()) {
+          html += `</${listType}>`;
+          inList = false;
+          continue;
+        }
+
+        // Paragraph
+        if (line.trim()) {
+          if (inList) { html += `</${listType}>`; inList = false; }
+          // Check for HTML passthrough (images, alignment divs, etc.)
+          if (line.trim().startsWith("<")) {
+            html += line;
+          } else {
+            html += `<p>${inline(line)}</p>`;
+          }
+        }
+      }
+      if (inList) html += `</${listType}>`;
+
+      return html;
+    }
+
+    function inline(text) {
+      text = esc(text);
+      // Images
+      text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+      // Links
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+      // Bold + italic
+      text = text.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+      // Bold
+      text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      // Italic
+      text = text.replace(/\*(.+?)\*/g, "<em>$1</em>");
+      // Inline code
+      text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+      return text;
+    }
+
+    function esc(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>

@@ -80,12 +80,45 @@ async function loadSessions() {
       sessionBar.appendChild(tab);
     });
 
+    // File viewer tabs
+    viewerFiles.forEach(filePath => {
+      const tab = document.createElement("button");
+      const fileName = filePath.split("/").pop();
+      tab.className = "session-tab file-tab" + (activeViewerFile === filePath ? " active" : "");
+      tab.innerHTML = `${fileName} <span class="preview-close file-close" data-file="${filePath}">&times;</span>`;
+      tab.title = filePath;
+
+      tab.addEventListener("click", (e) => {
+        if (e.target.classList.contains("file-close")) {
+          removeFileView(e.target.dataset.file);
+          return;
+        }
+        showFileView(filePath);
+      });
+      tab.addEventListener("touchend", (e) => {
+        if (e.target.classList.contains("file-close")) {
+          e.preventDefault();
+          removeFileView(e.target.dataset.file);
+          return;
+        }
+      });
+
+      sessionBar.appendChild(tab);
+    });
+
     // Add preview button
     const addBtn = document.createElement("button");
     addBtn.id = "add-preview-btn";
     addBtn.textContent = "+Preview";
     addBtn.addEventListener("click", addPreview);
     sessionBar.appendChild(addBtn);
+
+    // Add file viewer button
+    const fileBtn = document.createElement("button");
+    fileBtn.id = "add-file-btn";
+    fileBtn.textContent = "+File";
+    fileBtn.addEventListener("click", addFileView);
+    sessionBar.appendChild(fileBtn);
 
     // Hint
     const hint = document.createElement("span");
@@ -108,6 +141,7 @@ async function renameSession(idx, currentName) {
 
 function switchSession(idx) {
   activePreviewPort = null;
+  activeViewerFile = null;
   document.body.classList.remove("preview-mode");
   if (idx == windowIndex) { loadSessions(); return; }
   windowIndex = idx;
@@ -137,6 +171,7 @@ function interceptLocalhost(url) {
 
 // Install link interceptor in ttyd iframe
 const LOCALHOST_RE = /https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)(\/\S*)?/g;
+const FILE_RE = /(?:~\/|\.\/|\.\.\/|\/)?[^\s:*?"<>|]*[^\s:*?"<>|/]\.(?:md|markdown|txt|rst|org|adoc)\b/g;
 
 function installLinkInterceptor(frame) {
   try {
@@ -189,10 +224,47 @@ function installLinkInterceptor(frame) {
 
     // Register custom link provider for click-without-modifier
     function tryRegisterLinkProvider() {
-      // ttyd stores terminal in various places
-      const term = w.term || w.terminal;
+      // Find xterm terminal instance - try multiple locations
+      let term = w.term || w.terminal;
+
+      // Search window properties
+      if (!term) {
+        for (const key of Object.getOwnPropertyNames(w)) {
+          try {
+            const val = w[key];
+            if (val && typeof val === "object" && typeof val.registerLinkProvider === "function") {
+              term = val; break;
+            }
+            // Check nested .terminal property (ttyd stores it in a wrapper)
+            if (val && typeof val === "object" && val.terminal && typeof val.terminal.registerLinkProvider === "function") {
+              term = val.terminal; break;
+            }
+          } catch(e) {}
+        }
+      }
+
+      // Search via DOM element
+      if (!term) {
+        const xtermEl = w.document.querySelector(".xterm");
+        if (xtermEl) {
+          for (const key of Object.getOwnPropertyNames(xtermEl)) {
+            try {
+              const val = xtermEl[key];
+              if (val && typeof val === "object" && typeof val.registerLinkProvider === "function") {
+                term = val; break;
+              }
+            } catch(e) {}
+          }
+        }
+      }
+
+      console.log("[remotty] terminal instance search:", term ? "FOUND" : "NOT FOUND");
       if (term && term.registerLinkProvider && !term._remottyProvider) {
         term._remottyProvider = true;
+
+        // Keep built-in WebLinksAddon (it has correct underline rendering).
+        // URL clicks are intercepted via window.open proxy above.
+        // Only add a custom provider for file paths (.md, .txt, etc.)
         term.registerLinkProvider({
           provideLinks(y, callback) {
             try {
@@ -204,17 +276,19 @@ function installLinkInterceptor(frame) {
               }
               const links = [];
               let m;
-              LOCALHOST_RE.lastIndex = 0;
-              while ((m = LOCALHOST_RE.exec(text)) !== null) {
-                const matchUrl = m[0];
+              FILE_RE.lastIndex = 0;
+              while ((m = FILE_RE.exec(text)) !== null) {
+                const matchPath = m[0];
                 links.push({
-                  range: { start: { x: m.index + 1, y }, end: { x: m.index + matchUrl.length, y } },
-                  text: matchUrl,
+                  range: { start: { x: m.index + 1, y }, end: { x: m.index + matchPath.length, y } },
+                  text: matchPath,
                   activate() {
-                    window.parent.postMessage({ type: "remotty-preview", url: matchUrl }, "*");
+                    console.log("[remotty] file link clicked:", matchPath);
+                    window.parent.postMessage({ type: "remotty-file", path: matchPath }, "*");
                   }
                 });
               }
+              if (links.length) console.log("[remotty] file links found:", links.map(l => l.text));
               callback(links);
             } catch(e) { callback([]); }
           }
@@ -232,6 +306,13 @@ function installLinkInterceptor(frame) {
       }, 500);
     }
 
+    // Hide overview ruler decorations
+    try {
+      const style = w.document.createElement("style");
+      style.textContent = `.xterm-decoration-overview-ruler { display: none !important; }`;
+      w.document.head.appendChild(style);
+    } catch(e) {}
+
     w._remottyHooked = true;
   } catch(e) {}
 }
@@ -241,7 +322,58 @@ window.addEventListener("message", (e) => {
   if (e.data && e.data.type === "remotty-preview" && e.data.url) {
     interceptLocalhost(e.data.url);
   }
+  if (e.data && e.data.type === "remotty-file" && e.data.path) {
+    const filePath = e.data.path;
+    if (!viewerFiles.includes(filePath)) {
+      viewerFiles.push(filePath);
+      saveViewerFiles();
+    }
+    showFileView(filePath);
+  }
 });
+
+// File viewer functions
+let viewerFiles = JSON.parse(localStorage.getItem("viewer-files") || "[]");
+let activeViewerFile = null;
+
+function saveViewerFiles() {
+  localStorage.setItem("viewer-files", JSON.stringify(viewerFiles));
+}
+
+function addFileView() {
+  const input = prompt("File path (e.g. ~/project/README.md)");
+  if (!input) return;
+  const filePath = input.trim();
+  if (!filePath) return;
+  if (!viewerFiles.includes(filePath)) {
+    viewerFiles.push(filePath);
+    saveViewerFiles();
+  }
+  showFileView(filePath);
+}
+
+function removeFileView(filePath) {
+  viewerFiles = viewerFiles.filter(f => f !== filePath);
+  saveViewerFiles();
+  if (activeViewerFile === filePath) {
+    activeViewerFile = null;
+    document.body.classList.remove("preview-mode");
+  }
+  loadSessions();
+}
+
+function showFileView(filePath) {
+  activeViewerFile = filePath;
+  activePreviewPort = null;
+  document.body.classList.add("preview-mode");
+  const frame = document.getElementById("preview-frame");
+  frame.src = `/viewer.html?path=${encodeURIComponent(filePath)}`;
+  const pathInput = document.getElementById("preview-path");
+  const extLink = document.getElementById("preview-open-external");
+  pathInput.value = filePath;
+  extLink.href = `/viewer.html?path=${encodeURIComponent(filePath)}`;
+  loadSessions();
+}
 
 // Preview functions
 function addPreview() {
@@ -489,11 +621,16 @@ scrollOverlay.addEventListener("wheel", (e) => {
 });
 
 
-// ─── Voice Command mode ───
+// ─── Full Voice Mode ───
+// Unified mode: short utterances (1-2 words) → keyword command, longer → auto-send as text
 const voicecmdToggle = document.getElementById("voicecmd-toggle");
 const voicecmdOverlay = document.getElementById("voicecmd-overlay");
 let voicecmdMode = false;
 let voicecmdRecognition = null;
+let voicecmdDebounce = null;
+let voicecmdCountdown = null;
+let voicecmdAccum = ""; // accumulated transcript for current utterance
+const VOICECMD_SEND_DELAY = 3000; // ms before auto-send
 
 // Keyword maps
 const ENTER_KEYWORDS = [
@@ -510,12 +647,6 @@ const CANCEL_KEYWORDS = [
   // English
   "cancel", "stop", "no", "abort", "quit", "exit", "nope", "don't", "halt",
 ];
-const DICTATE_KEYWORDS = [
-  // Korean
-  "음성인식", "음성 인식", "입력", "텍스트", "타이핑", "받아쓰기",
-  // English
-  "dictate", "type", "input", "text",
-];
 
 function normalizeText(text) {
   return text.toLowerCase().replace(/[.,!?;:'"]/g, "").trim();
@@ -523,9 +654,6 @@ function normalizeText(text) {
 
 function matchKeyword(text) {
   const normalized = normalizeText(text);
-  for (const kw of DICTATE_KEYWORDS) {
-    if (normalized === kw || normalized.endsWith(kw)) return "dictate";
-  }
   for (const kw of ENTER_KEYWORDS) {
     if (normalized === kw || normalized.endsWith(kw)) return "enter";
   }
@@ -533,6 +661,14 @@ function matchKeyword(text) {
     if (normalized === kw || normalized.endsWith(kw)) return "cancel";
   }
   return null;
+}
+
+function wordCount(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  // Korean: count characters as ~1 word per 2 chars, English: split by space
+  const spaceWords = trimmed.split(/\s+/).length;
+  return spaceWords;
 }
 
 // Voice command toast
@@ -543,7 +679,6 @@ function showVoiceCmdToast(spoken, keyLabel) {
   clearTimeout(voicecmdToastTimer);
   voicecmdToast.classList.remove("show");
   voicecmdToast.innerHTML = `<span class="toast-label">${spoken}</span><span class="toast-key">${keyLabel}</span>`;
-  // Force reflow to restart animation
   void voicecmdToast.offsetWidth;
   voicecmdToast.classList.add("show");
   voicecmdToastTimer = setTimeout(() => {
@@ -567,6 +702,7 @@ function toggleVoiceCmd() {
   voicecmdMode = !voicecmdMode;
   voicecmdToggle.classList.toggle("active", voicecmdMode);
   voicecmdOverlay.classList.toggle("active", voicecmdMode);
+  voiceBar.classList.add("voice-hidden");
 
   if (voicecmdMode) {
     startVoiceCmd();
@@ -586,27 +722,38 @@ function startVoiceCmd() {
 
   voicecmdRecognition = new SpeechRecognition();
   voicecmdRecognition.lang = langs[langIndex].code;
-  voicecmdRecognition.interimResults = false;
+  voicecmdRecognition.interimResults = true;
   voicecmdRecognition.continuous = true;
 
+  voicecmdAccum = "";
+
   voicecmdRecognition.onresult = (event) => {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (!event.results[i].isFinal) continue;
-      const text = event.results[i][0].transcript;
-      const action = matchKeyword(text);
-      if (action === "dictate") {
-        showVoiceCmdToast(text.trim(), "Dictate...");
-        startVoiceCmdDictate();
-        return;
-      } else if (action === "enter") {
-        showVoiceCmdToast(text.trim(), "Enter ↵");
-        sendKey("Enter");
-      } else if (action === "cancel") {
-        showVoiceCmdToast(text.trim(), "Ctrl+C ✕");
-        sendKey("C-c");
-      } else {
-        showVoiceCmdToast(text.trim(), "—");
-      }
+    // Build full transcript from all results
+    let fullText = "";
+    for (let i = 0; i < event.results.length; i++) {
+      fullText += event.results[i][0].transcript;
+    }
+    voicecmdAccum = fullText.trim();
+
+    // Show voice bar when it looks like a longer input (3+ words)
+    if (wordCount(voicecmdAccum) >= 3) {
+      voiceBar.classList.remove("voice-hidden");
+      voiceText.textContent = voicecmdAccum;
+      voiceText.style.color = "";
+    }
+
+    // Reset debounce + countdown on every result
+    clearTimeout(voicecmdDebounce);
+    clearInterval(voicecmdCountdown);
+    hideVoiceCmdTimer();
+
+    voicecmdDebounce = setTimeout(() => {
+      processVoiceCmdResult();
+    }, VOICECMD_SEND_DELAY);
+
+    // Start countdown indicator if long enough to send
+    if (wordCount(voicecmdAccum) >= 3) {
+      startVoiceCmdTimer(VOICECMD_SEND_DELAY);
     }
   };
 
@@ -616,114 +763,112 @@ function startVoiceCmd() {
       voicecmdToggle.classList.remove("active");
       voicecmdOverlay.classList.remove("active");
     }
-    // "no-speech" / "aborted" → will auto-restart via onend
   };
 
   voicecmdRecognition.onend = () => {
+    // Process any pending text before restart
+    if (voicecmdAccum.trim()) {
+      clearTimeout(voicecmdDebounce);
+      processVoiceCmdResult();
+    }
     // Auto-restart if still in voice command mode
     if (voicecmdMode) {
-      try { voicecmdRecognition.start(); } catch(e) {}
+      try {
+        voicecmdRecognition = new SpeechRecognition();
+        voicecmdRecognition.lang = langs[langIndex].code;
+        voicecmdRecognition.interimResults = true;
+        voicecmdRecognition.continuous = true;
+        voicecmdRecognition.onresult = arguments.callee.caller?.arguments?.[0]?.target?.onresult;
+        // Re-bind handlers
+        startVoiceCmd();
+      } catch(e) {}
     }
   };
 
   voicecmdRecognition.start();
 }
 
-function stopVoiceCmd() {
-  if (voicecmdRecognition) {
-    voicecmdMode = false; // prevent auto-restart in onend
-    voicecmdRecognition.abort();
-    voicecmdRecognition = null;
-  }
+// Voice timer indicator
+const voiceTimerEl = document.getElementById("voice-timer");
+const voiceTimerText = document.getElementById("voice-timer-text");
+const voiceTimerBar = document.getElementById("voice-timer-bar");
+
+function startVoiceCmdTimer(duration) {
+  voiceTimerEl.classList.remove("voice-timer-hidden");
+  const start = Date.now();
+  const totalSec = Math.ceil(duration / 1000);
+  voiceTimerText.textContent = totalSec;
+  voiceTimerBar.style.setProperty("--timer-progress", "100%");
+
+  voicecmdCountdown = setInterval(() => {
+    const elapsed = Date.now() - start;
+    const remaining = Math.max(0, duration - elapsed);
+    const sec = Math.ceil(remaining / 1000);
+    voiceTimerText.textContent = sec;
+    voiceTimerBar.style.setProperty("--timer-progress", (remaining / duration * 100) + "%");
+    if (remaining <= 0) {
+      clearInterval(voicecmdCountdown);
+    }
+  }, 100);
 }
 
-// Voice Command mode: quick dictation (STT button while voice cmd active)
-let voicecmdDictating = false;
-let voicecmdDictateRecognition = null;
-let voicecmdDictateTimer = null;
-
-function startVoiceCmdDictate() {
-  // Pause voice command listening
-  if (voicecmdRecognition) {
-    voicecmdRecognition.abort();
-    voicecmdRecognition = null;
-  }
-
-  voicecmdDictating = true;
-  micBtn.classList.add("recording");
-  voiceBar.classList.remove("voice-hidden");
-  positionVoiceBar();
-  voiceText.textContent = "";
-  voiceText.style.color = "";
-
-  voicecmdDictateRecognition = new SpeechRecognition();
-  voicecmdDictateRecognition.lang = langs[langIndex].code;
-  voicecmdDictateRecognition.interimResults = true;
-  voicecmdDictateRecognition.continuous = true;
-
-  let lastTranscript = "";
-
-  voicecmdDictateRecognition.onresult = (event) => {
-    let interim = "";
-    let final = "";
-    for (let i = 0; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        final += event.results[i][0].transcript;
-      } else {
-        interim += event.results[i][0].transcript;
-      }
-    }
-    lastTranscript = final + interim;
-    voiceText.textContent = lastTranscript;
-
-    // Debounce: auto-send after speech pause
-    clearTimeout(voicecmdDictateTimer);
-    if (lastTranscript.trim()) {
-      voicecmdDictateTimer = setTimeout(() => {
-        const text = lastTranscript.trim();
-        if (text) {
-          showVoiceCmdToast(text, "Send ↵");
-          sendText(text);
-        }
-        stopVoiceCmdDictate();
-      }, 1500);
-    }
-  };
-
-  voicecmdDictateRecognition.onerror = (event) => {
-    if (event.error !== "aborted") {
-      stopVoiceCmdDictate();
-    }
-  };
-
-  voicecmdDictateRecognition.onend = () => {
-    // If still dictating and we have text, send it
-    if (voicecmdDictating && lastTranscript.trim()) {
-      clearTimeout(voicecmdDictateTimer);
-      showVoiceCmdToast(lastTranscript.trim(), "Send ↵");
-      sendText(lastTranscript.trim());
-    }
-    stopVoiceCmdDictate();
-  };
-
-  voicecmdDictateRecognition.start();
+function hideVoiceCmdTimer() {
+  clearInterval(voicecmdCountdown);
+  voiceTimerEl.classList.add("voice-timer-hidden");
 }
 
-function stopVoiceCmdDictate() {
-  clearTimeout(voicecmdDictateTimer);
-  voicecmdDictating = false;
-  micBtn.classList.remove("recording");
+function processVoiceCmdResult() {
+  hideVoiceCmdTimer();
+  const text = voicecmdAccum.trim();
+  voicecmdAccum = "";
+  if (!text) return;
+
+  const wc = wordCount(text);
+
+  if (wc <= 2) {
+    // Short utterance → try keyword match
+    const action = matchKeyword(text);
+    if (action === "enter") {
+      showVoiceCmdToast(text, "Enter ↵");
+      sendKey("Enter");
+    } else if (action === "cancel") {
+      showVoiceCmdToast(text, "Ctrl+C ✕");
+      sendKey("C-c");
+    } else {
+      // Short but not a keyword → ignore
+      showVoiceCmdToast(text, "—");
+    }
+  } else {
+    // Long utterance → send as text
+    showVoiceCmdToast(text, "Send ↵");
+    sendText(text);
+  }
+
+  // Hide voice bar and restart recognition
   voiceBar.classList.add("voice-hidden");
   voiceText.textContent = "";
 
-  if (voicecmdDictateRecognition) {
-    voicecmdDictateRecognition.abort();
-    voicecmdDictateRecognition = null;
-  }
-
-  // Resume voice command listening
-  if (voicecmdMode) {
+  // Restart recognition for next utterance
+  if (voicecmdMode && voicecmdRecognition) {
+    try {
+      voicecmdRecognition.abort();
+    } catch(e) {}
+    voicecmdRecognition = null;
     startVoiceCmd();
+  }
+}
+
+function stopVoiceCmd() {
+  clearTimeout(voicecmdDebounce);
+  hideVoiceCmdTimer();
+  voicecmdAccum = "";
+  voicecmdMode = false;
+  voiceBar.classList.add("voice-hidden");
+  voiceText.textContent = "";
+  if (voicecmdRecognition) {
+    voicecmdRecognition.onend = null;
+    voicecmdRecognition.abort();
+    voicecmdRecognition = null;
   }
 }
 
@@ -759,12 +904,8 @@ function positionVoiceBar() {
   }
 }
 
-// Mic button: tap = record (also works as cancel during voice cmd dictation)
+// Mic button: tap = record
 addTouchClick("mic-btn", () => {
-  if (voicecmdDictating) {
-    stopVoiceCmdDictate();
-    return;
-  }
   if (isRecording) stopVoice();
   else startVoice();
 });

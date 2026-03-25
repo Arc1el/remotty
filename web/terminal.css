@@ -147,6 +147,39 @@ html {
 }
 
 /* Add preview button */
+/* File viewer tab in session bar */
+.session-tab.file-tab {
+  color: var(--green);
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-tab.file-tab.active {
+  border-bottom-color: var(--green);
+}
+
+#add-file-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--green);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  font-weight: 600;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+#add-file-btn:active {
+  opacity: 1;
+}
+
 #add-preview-btn {
   flex-shrink: 0;
   padding: 8px 12px;
@@ -475,6 +508,49 @@ body.preview-mode #resize-handle { display: none; }
 /* Mic slots */
 .mic-slot {
   display: contents;
+}
+
+/* Voice timer indicator */
+#voice-timer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+}
+
+#voice-timer.voice-timer-hidden {
+  display: none;
+}
+
+#voice-timer-text {
+  font-size: 11px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-weight: 600;
+  color: #ff8c42;
+  min-width: 20px;
+  text-align: center;
+}
+
+#voice-timer-bar {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 140, 66, 0.2);
+  overflow: hidden;
+  position: relative;
+}
+
+#voice-timer-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--timer-progress, 100%);
+  background: #ff8c42;
+  border-radius: 2px;
+  transition: width 0.1s linear;
 }
 
 /* Mic button */
