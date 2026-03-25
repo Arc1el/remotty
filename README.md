@@ -11,6 +11,10 @@
 
 ---
 
+<p align="center">
+  <a href="./README.md"><strong>English</strong></a> · <a href="./README.ko.md">한국어</a>
+</p>
+
 > **Remotty** = remote + tty
 
 Running Claude Code overnight? Kicked off a long build? Left Codex working on a refactor?
