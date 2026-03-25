@@ -239,7 +239,7 @@ Automatic. `make install` handles everything.
 4. Under **Command**, select **Command** and enter:
 
 ```
-/opt/homebrew/bin/tmux -u new-session -t remotty \; new-window
+tmux -u new-session -t remotty \; new-window
 ```
 
 5. Restart iTerm2
